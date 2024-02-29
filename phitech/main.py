@@ -46,6 +46,7 @@ def ide():
 @click.option("--live", is_flag=True, required=False, help="Run the bot live")
 def bot(name, backtest=None, live=False):
     from phitech import conf
+
     bot_def = conf.bots[name]
     if live:
         logger.info(f"start live execution of -> `{name}`")
@@ -81,6 +82,7 @@ def template(name):
 def strategy(name):
     from phitech import const
     from phitech.templates import blank_strategy_template
+
     strategy_path = f"{const.BASE_STRATEGIES_PATH}/{name}.py"
     logger.info(f"generate strategy -> `{strategy_path}`")
     with open(strategy_path, "w") as f:
@@ -92,6 +94,7 @@ def strategy(name):
 def indicator(name):
     from phitech import const
     from phitech.templates import blank_indicator_template
+
     indicator_path = f"{const.BASE_INDICATORS_PATH}/{name}.py"
     logger.info(f"generate indicator -> `{indicator_path}`")
     with open(indicator_path, "w") as f:
@@ -103,6 +106,7 @@ def indicator(name):
 @click.option("--name", required=True, help="Name of the notebook")
 def notebook(name, kind):
     from phitech.generators.notebook import generate_exploration_notebook, generate_strategy_notebook
+
     if kind == "explore":
         logger.info(f"generate exploration notebook -> `{name}`")
         generate_exploration_notebook(name)
@@ -115,11 +119,14 @@ def notebook(name, kind):
 @click.option("--name", required=True, help="The name of the bot")
 def bot(name):
     from phitech.generators.bot import generate_bot_directory_structure, generate_bot
+
     logger.info(f"make directory structure for `{name}`")
     generate_bot_directory_structure(name)
+    logger.info("done.")
 
     logger.info("generate bot")
     generate_bot(name)
+    logger.info("done.")
 
 
 def run():
