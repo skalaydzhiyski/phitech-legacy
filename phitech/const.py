@@ -5,7 +5,11 @@ BASE_DEFINITIONS_PATH = f"{os.environ['PYTHONPATH']}/definitions"
 BASE_STRATEGIES_PATH = f"{os.environ['PYTHONPATH']}/ip/strategies"
 BASE_DATA_PATH = f"{os.environ['PYTHONPATH']}/data"
 BASE_INDICATORS_PATH = f"{os.environ['PYTHONPATH']}/ip/indicators"
+BASE_ANALYZERS_PATH = f"{os.environ['PYTHONPATH']}/ip/analyzers"
+BASE_OBSERVERS_PATH = f"{os.environ['PYTHONPATH']}/ip/observers"
+BASE_SIZERS_PATH = f"{os.environ['PYTHONPATH']}/ip/sizers"
 BASE_NOTEBOOKS_PATH = f"{os.environ['PYTHONPATH']}/notebooks"
+
 BASE_BOTS_PATH = f"{os.environ['PYTHONPATH']}/bots"
 
 TAB = "\t"

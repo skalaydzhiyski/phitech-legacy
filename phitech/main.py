@@ -1,5 +1,6 @@
 from phitech.logger import logger
 from phitech.banner import BANNER
+from phitech.generators.helpers import filename_to_cls
 import click
 
 import os
@@ -15,6 +16,7 @@ def cli():
 
 @cli.command("info")
 def info():
+    # think about how we can use rich to print the banner in bold white.
     for line in BANNER.split("\n"):
         logger.info(f"\033[1m{line}\033[0m")
     logger.info("\t   Phi Technologies.\n")
@@ -79,26 +81,89 @@ def template(name):
 
 @make.command(help="Generate a strategy skeleton")
 @click.option("--name", required=True, help="The name of the strategy")
-def strategy(name):
+@click.option("--kind", required=True, help="The kind of the strategy")
+def strategy(name, kind):
     from phitech import const
     from phitech.templates import blank_strategy_template
 
-    strategy_path = f"{const.BASE_STRATEGIES_PATH}/{name}.py"
+    kind_path = f"{const.BASE_STRATEGIES_PATH}/{kind}"
+    if not os.path.exists(kind_path):
+        logger.info("kind path does not exists, generate.")
+        os.system(f"mkdir {kind_path}")
+
+    strategy_path = f"{kind_path}/{name}.py"
     logger.info(f"generate strategy -> `{strategy_path}`")
     with open(strategy_path, "w") as f:
-        f.write(blank_strategy_template.format(strategy_name=name))
+        strategy_str = blank_strategy_template.format(strategy_name=filename_to_cls(name))
+        f.write(strategy_str)
+
+    logger.info("done.")
 
 
 @make.command(help="Generate a indicator skeleton")
 @click.option("--name", required=True, help="The name of the indicator")
-def indicator(name):
+@click.option("--kind", required=True, help="The kind of the indicator")
+@click.option("--line-name", required=True, help="The line name of the indicator (for use in a strategy)")
+def indicator(name, kind, line_name):
     from phitech import const
     from phitech.templates import blank_indicator_template
 
-    indicator_path = f"{const.BASE_INDICATORS_PATH}/{name}.py"
+    kind_path = f"{const.BASE_INDICATORS_PATH}/{kind}"
+    if not os.path.exists(kind_path):
+        logger.info("kind path does not exists, generate.")
+        os.system(f"mkdir {kind_path}")
+
+    indicator_path = f"{kind_path}/{name}.py"
     logger.info(f"generate indicator -> `{indicator_path}`")
     with open(indicator_path, "w") as f:
-        f.write(blank_indicator_template.format(indicator_name=name))
+        indicator_str = blank_indicator_template.format(
+            indicator_name=filename_to_cls(name, suffix="Indicator"), indicator_line_name=line_name
+        )
+        f.write(indicator_str)
+
+
+@make.command(help="Generate a analyzer skeleton")
+@click.option("--name", required=True, help="The name of the analyzer")
+def analyzer(name):
+    from phitech import const
+    from phitech.templates import blank_analyzer_template
+
+    analyzer_path = f"{const.BASE_ANALYZERS_PATH}/{name}.py"
+    logger.info(f"generate analyzer -> `{analyzer_path}`")
+    with open(analyzer_path, "w") as f:
+        analyzer_str = blank_analyzer_template.format(analyzer_name=filename_to_cls(name, suffix="Analyzer"))
+        f.write(analyzer_str)
+
+
+@make.command(help="Generate a observer skeleton")
+@click.option("--name", required=True, help="The name of the observer")
+@click.option("--line-name", required=True, help="The line name of the observer")
+def observer(name, line_name):
+    from phitech import const
+    from phitech.templates import blank_observer_template
+
+    observer_path = f"{const.BASE_OBSERVERS_PATH}/{name}.py"
+    logger.info(f"generate observer -> `{observer_path}`")
+    with open(observer_path, "w") as f:
+        observer_str = blank_observer_template.format(
+            observer_name=filename_to_cls(name, suffix="Observer"),
+            observer_line_name=line_name
+        )
+        f.write(observer_str)
+
+
+@make.command(help="Generate a sizer skeleton")
+@click.option("--name", required=True, help="The name of the sizer")
+@click.option("--line-name", required=True, help="The line name of the sizer")
+def sizer(name, line_name):
+    from phitech import const
+    from phitech.templates import blank_sizer_template
+
+    sizer_path = f"{const.BASE_SIZERS_PATH}/{name}.py"
+    logger.info(f"generate sizer -> `{sizer_path}`")
+    with open(sizer_path, "w") as f:
+        sizer_str = blank_sizer_template.format(sizer_name=filename_to_cls(name, suffix="Sizer"))
+        f.write(sizer_str)
 
 
 @make.command(help="Generate a notebook")

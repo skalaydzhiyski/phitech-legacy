@@ -2,8 +2,8 @@ from phitech import conf
 from phitech.logger import logger
 
 
-def strategy_filename_to_cls(name):
-    return "".join([s.capitalize() for s in name.split("_")]) + "Strategy"
+def filename_to_cls(name, suffix="Strategy"):
+    return "".join([s.capitalize() for s in name.split("_")]) + suffix
 
 
 def write_to_file(string_content, filepath):

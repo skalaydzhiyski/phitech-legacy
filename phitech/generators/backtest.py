@@ -1,9 +1,9 @@
 from phitech import conf, const
 from phitech.logger import logger
-from phitech.generators.helpers import write_to_file, strategy_filename_to_cls
+from phitech.generators.helpers import write_to_file, filename_to_cls
 from phitech.templates import (
     provider_template,
-    instruments_template,
+    backtest_instruments_template,
     backtest_instrument_stock_template,
     strategy_import_template,
     strategy_template,
@@ -46,7 +46,7 @@ def generate_backtest_instruments(backtest_def, bot_kind, bot_name, backtest_nam
         instrument_strings += get_instrument_strings_for_kind(kind, backtest_def)
 
     instruments_str = "".join(instrument_strings)
-    return instruments_template.format(
+    return backtest_instruments_template.format(
         bot_kind=bot_kind, bot_name=bot_name, backtest_name=backtest_name, instruments=instruments_str
     )
 
@@ -57,7 +57,7 @@ def generate_backtest_strategies(bot_def):
             strategy_import_template.format(
                 strategy_kind=sdef.kind,
                 strategy_name=sdef.name,
-                strategy_cls=strategy_filename_to_cls(sdef.name),
+                strategy_cls=filename_to_cls(sdef.name),
             ).strip()
             for sdef in bot_def.strategies
         ]
@@ -65,7 +65,7 @@ def generate_backtest_strategies(bot_def):
     strategies = "".join(
         [
             strategy_template.format(
-                strategy_cls=strategy_filename_to_cls(sdef.name),
+                strategy_cls=filename_to_cls(sdef.name),
                 strategy_config=conf.strategy_configs[sdef.config].config.to_dict(),
             )
             for sdef in bot_def.strategies

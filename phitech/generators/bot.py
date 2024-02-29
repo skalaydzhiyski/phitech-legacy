@@ -53,4 +53,3 @@ def generate_bot(name):
 
     logger.info("run formatter")
     run_formatter()
-    logger.info("done.")
