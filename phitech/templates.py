@@ -2,24 +2,26 @@ provider_template = """
 from atreyu_backtrader_api import IBStore
 
 
-provider = IBStore(host="{host}", port={port}, clientId={client_id}, timeout=100)
+provider = IBStore(host="{host}", port={port}, clientId={client_id})
 """
 
 live_instrument_stock_template = """
-instrument_{ticker} = provider.getdata(
+instrument_{alias} = provider.getdata(
     name="{ticker}",
     dataname="{ticker}",
     secType="{security_type}",
     exchange="{exchange}",
     currency="USD", 
     what="TRADES",
-    tradename="{ticker}-{tradename}-{exchange}-USD"
+    timeframe=bt.TimeFrame.{timeframe},
+    compression={compression},
+    tradename="{ticker}-{live_type}-{exchange}-USD"
 )
-instruments.append(("{ticker}", instrument_{ticker}))
+instruments.append(("{alias}", instrument_{alias}))
 """
 
 backtest_instrument_stock_template = """
-instrument_{ticker} = provider.getdata(
+instrument_{alias} = provider.getdata(
     name="{ticker}",
     dataname="{ticker}",
     secType="{security_type}",
@@ -27,16 +29,19 @@ instrument_{ticker} = provider.getdata(
     currency="USD", 
     what="TRADES",
     historical=True,
-    fromdate=date.fromisoformat("{from_date}"),
-    todate=date.fromisoformat("{to_date}"),
+    timeframe=bt.TimeFrame.{timeframe},
+    compression={compression},
+    fromdate=datetime.fromisoformat("{from_date}"),
+    todate=datetime.fromisoformat("{to_date}"),
     rtbar=True,
 )
-instruments.append(("{ticker}", instrument_{ticker}))
+instruments.append(("{alias}", instrument_{alias}))
 """
 
 live_instruments_template = """
 from bots.{bot_kind}.{bot_name}.live.provider import provider
-from datetime import date
+import backtrader as bt
+from datetime import datetime
 
 
 instruments = []
@@ -45,7 +50,8 @@ instruments = []
 
 backtest_instruments_template = """
 from bots.{bot_kind}.{bot_name}.backtest.{backtest_name}.provider import provider
-from datetime import date
+import backtrader as bt
+from datetime import datetime
 
 
 instruments = []
@@ -69,7 +75,7 @@ strategies = []
 """
 
 backtest_runner_template = """
-from bots.{bot_kind}.{bot_name}.backtest.{backtest_name}.instruments import instruments
+from bots.{bot_kind}.{bot_name}.backtest.{backtest_name}.sets.set_{set_idx}.instruments import instruments
 from bots.{bot_kind}.{bot_name}.backtest.{backtest_name}.strategies import strategies
 from logger import logger
 import backtrader as bt
@@ -78,9 +84,8 @@ import time
 
 engine = bt.Cerebro()
 
-for instrument_name, instrument in instruments:
-	engine.resampledata(instrument, timeframe=bt.TimeFrame.{timeframe}, compression={compression})
-	engine.adddata(instrument, name=instrument_name.lower())
+for alias, instrument in instruments:
+	engine.adddata(instrument, name=alias)
 
 for strategy, config in strategies:
 	engine.addstrategy(strategy, **config)
@@ -100,9 +105,8 @@ import time
 
 engine = bt.Cerebro()
 
-for instrument_name, instrument in instruments:
-	engine.resampledata(instrument, timeframe=bt.TimeFrame.{timeframe}, compression={compression})
-	engine.adddata(instrument, name=instrument_name.lower())
+for alias, instrument in instruments:
+	engine.adddata(instrument, name=alias)
 
 for strategy, config in strategies:
 	engine.addstrategy(strategy, **config)

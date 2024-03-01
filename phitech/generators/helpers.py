@@ -2,6 +2,26 @@ from phitech import conf
 from phitech.logger import logger
 
 
+def parse_ticker_string(ticker_str):
+    instrument_str, range_str = ticker_str.split("|")
+    ticker, underlying_type, livetype, exchange, timeframe, compression, alias = instrument_str.split(".")
+    start_date, end_date = range_str.split("/")
+    return (ticker, underlying_type, livetype, exchange, timeframe, compression, alias, start_date, end_date)
+
+
+def parse_sets_string(sets_string, name=None):
+    if isinstance(sets_string, int):
+        return [sets_string]
+    if sets_string.strip() == "all":
+        n_sets = conf.instruments[name].sets
+        return list(range(len(n_sets)))
+    elif "-" in sets_string.strip():
+        left, right = list(map(int, sets_string.split("-")))
+        return list(range(left, right + 1))
+    elif "," in sets_string.strip():
+        return list(map(int, sets_string.strip().split(",")))
+
+
 def filename_to_cls(name, suffix="Strategy"):
     return "".join([s.capitalize() for s in name.split("_")]) + suffix
 

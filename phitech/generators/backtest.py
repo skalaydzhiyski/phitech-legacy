@@ -1,6 +1,6 @@
 from phitech import conf, const
 from phitech.logger import logger
-from phitech.generators.helpers import write_to_file, filename_to_cls
+from phitech.generators.helpers import write_to_file, filename_to_cls, parse_ticker_string, parse_sets_string
 from phitech.templates import (
     provider_template,
     backtest_instruments_template,
@@ -21,29 +21,35 @@ def generate_backtest_provider(backtest_def):
     )
 
 
-def get_instrument_strings_for_kind(kind, backtest_def):
-    kind_instruments_def = conf.instruments[backtest_def.universe.instruments.name][kind]
+def generate_backtest_instruments(tickers, bot_kind, bot_name, backtest_name):
     instrument_strings = []
-    for ticker in kind_instruments_def.tickers:
+    for ticker_str in tickers:
         istr = ""
-        if kind == "stocks":
+        (
+            ticker,
+            underlying_type,
+            _,
+            exchange,
+            timeframe,
+            compression,
+            alias,
+            start_date,
+            end_date,
+        ) = parse_ticker_string(ticker_str)
+        if underlying_type == "STK":
             istr = backtest_instrument_stock_template.format(
                 ticker=ticker,
-                security_type=kind_instruments_def.contract.security_type,
-                exchange=kind_instruments_def.contract.exchange,
-                from_date=backtest_def.range.start_date,
-                to_date=backtest_def.range.end_date,
+                security_type=underlying_type,
+                exchange=exchange,
+                timeframe=timeframe,
+                compression=compression,
+                from_date=start_date,
+                to_date=end_date,
+                alias=alias,
             )
-        elif kind == "future":
-            raise NotImplementedError("not supported")
+        else:
+            raise NotImplementedError("not ready yet")
         instrument_strings.append(istr)
-    return instrument_strings
-
-
-def generate_backtest_instruments(backtest_def, bot_kind, bot_name, backtest_name):
-    instrument_strings = []
-    for kind in backtest_def.universe.instruments.kinds:
-        instrument_strings += get_instrument_strings_for_kind(kind, backtest_def)
 
     instruments_str = "".join(instrument_strings)
     return backtest_instruments_template.format(
@@ -86,24 +92,32 @@ def generate_backtest(backtest_name, bot_name, bot_def):
     write_to_file(backtest_provider_str, f"{base_backtest_path}/provider.py")
 
     logger.info("generate backtest instruments")
-    backtest_instruments_str = generate_backtest_instruments(
-        backtest_def, bot_def.kind, bot_name, backtest_name
+    set_idxs = parse_sets_string(
+        backtest_def.universe.instruments.sets,
+        name=backtest_def.universe.instruments.name,
     )
-    write_to_file(backtest_instruments_str, f"{base_backtest_path}/instruments.py")
+    for idx, sdef in enumerate(conf.instruments[backtest_def.universe.instruments.name].sets):
+        if idx not in set_idxs:
+            continue
+
+        logger.info(f"generate instruments for set -> {idx}")
+        backtest_instruments_str = generate_backtest_instruments(
+            sdef.tickers, bot_def.kind, bot_name, backtest_name
+        )
+        write_to_file(backtest_instruments_str, f"{base_backtest_path}/sets/set_{idx}/instruments.py")
+
+        logger.info(f"generate runner for set -> {idx}")
+        backtest_runner_str = backtest_runner_template.format(
+            bot_kind=bot_def.kind,
+            bot_name=bot_name,
+            backtest_name=backtest_name,
+            set_idx=idx,
+        )
+        write_to_file(backtest_runner_str, f"{base_backtest_path}/sets/set_{idx}/runner.py")
 
     logger.info("generate backtest strategies")
     backtest_strategies_str = generate_backtest_strategies(bot_def)
     write_to_file(backtest_strategies_str, f"{base_backtest_path}/strategies.py")
-
-    logger.info("generate backtest runner")
-    backtest_runner_str = backtest_runner_template.format(
-        bot_kind=bot_def.kind,
-        bot_name=bot_name,
-        backtest_name=backtest_name,
-        timeframe=backtest_def.sample.timeframe.capitalize(),
-        compression=backtest_def.sample.compression,
-    )
-    write_to_file(backtest_runner_str, f"{base_backtest_path}/runner.py")
 
 
 def generate_backtest_runs(name):

@@ -1,7 +1,8 @@
 from phitech import conf, const
 from phitech.generators.helpers import (
     write_to_file,
-    filename_to_cls
+    filename_to_cls,
+    parse_ticker_string,
 )
 from phitech.templates import (
     provider_template,
@@ -11,7 +12,6 @@ from phitech.templates import (
     strategy_template,
     strategies_template,
     live_runner_template,
-
 )
 from phitech.logger import logger
 
@@ -23,6 +23,7 @@ def generate_live_provider(bot_def):
         port=provider_def.port,
         client_id=bot_def.live.client_id,
     )
+
 
 def get_instrument_strings_for_kind(bot_def, kind):
     kind_instruments_def = conf.instruments[bot_def.live.universe.instruments.name][kind]
@@ -44,13 +45,41 @@ def get_instrument_strings_for_kind(bot_def, kind):
 
 def generate_live_instruments(bot_def, bot_name):
     instrument_strings = []
-    for kind in bot_def.live.universe.instruments.kinds:
-        instrument_strings += get_instrument_strings_for_kind(bot_def, kind)
+    ticker_set = conf.instruments[bot_def.live.universe.instruments.name].sets[
+        bot_def.live.universe.instruments.set
+    ]
+    for ticker_str in ticker_set.tickers:
+        istr = ""
+        (
+            ticker,
+            underlying_type,
+            live_type,
+            exchange,
+            timeframe,
+            compression,
+            alias,
+            start_date,
+            end_date,
+        ) = parse_ticker_string(ticker_str)
+        if underlying_type == "STK":
+            istr = live_instrument_stock_template.format(
+                ticker=ticker,
+                security_type=live_type,  # test what happens if we remove tradename and replace it with live_type here
+                exchange=exchange,
+                timeframe=timeframe,
+                compression=compression,
+                live_type=live_type,
+                alias=alias,
+            )
+        else:
+            raise NotImplementedError("not ready yet")
+        instrument_strings.append(istr)
 
     instruments_str = "".join(instrument_strings)
     return live_instruments_template.format(
         bot_kind=bot_def.kind, bot_name=bot_name, instruments=instruments_str
     )
+
 
 def generate_live_strategies(bot_def):
     strategy_imports = "\n".join(
@@ -77,6 +106,7 @@ def generate_live_strategies(bot_def):
         strategies=strategies,
     )
 
+
 def generate_live(bot_name):
     bot_def = conf.bots[bot_name]
     base_live_path = f"bots/{bot_def.kind}/{bot_name}/live"
@@ -97,7 +127,5 @@ def generate_live(bot_name):
     live_runner_str = live_runner_template.format(
         bot_kind=bot_def.kind,
         bot_name=bot_name,
-        timeframe=bot_def.live.sample.timeframe.capitalize(),
-        compression=bot_def.live.sample.compression,
     )
     write_to_file(live_runner_str, f"{base_live_path}/runner.py")

@@ -55,12 +55,16 @@ def bot(name, backtest=None, live=False):
         live_run_cmd = f"python3 bots/{bot_def.kind}/{name}/live/runner.py"
         os.system(live_run_cmd)
     else:
-        logger.info(f"start backtest for -> `{name}`")
+        logger.info(f"run backtests for -> `{name}`")
         backtests = backtest.split(",")
         for bt_name in backtests:
-            logger.info(f"running backtest -> `{bt_name}`")
-            bt_run_cmd = f"python3 bots/{bot_def.kind}/{name}/backtest/{bt_name}/runner.py"
-            os.system(bt_run_cmd)
+            logger.info(f"run backtest -> `{bt_name}`")
+            base_sets_path = f"bots/{bot_def.kind}/{name}/backtest/{bt_name}/sets"
+            logger.info(f"run sets for -> {bt_name}")
+            for set_dir in sorted(os.listdir(base_sets_path)):
+                logger.info(f"run set -> {set_dir.split('_')[-1]}")
+                bt_run_cmd = f"python {base_sets_path}/{set_dir}/runner.py"
+                os.system(bt_run_cmd)
         logger.info("done.")
 
 
@@ -146,8 +150,7 @@ def observer(name, line_name):
     logger.info(f"generate observer -> `{observer_path}`")
     with open(observer_path, "w") as f:
         observer_str = blank_observer_template.format(
-            observer_name=filename_to_cls(name, suffix="Observer"),
-            observer_line_name=line_name
+            observer_name=filename_to_cls(name, suffix="Observer"), observer_line_name=line_name
         )
         f.write(observer_str)
 
