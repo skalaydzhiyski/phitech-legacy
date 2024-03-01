@@ -105,6 +105,7 @@ def get_historical_bars_default(client, contract, end_date, duration, interval):
         barSizeSetting=interval,
         whatToShow="TRADES",
         useRTH=True,
+        timeout=300,
     )
     res = util.df(res)
     res["date"] = pd.to_datetime(res["date"])
