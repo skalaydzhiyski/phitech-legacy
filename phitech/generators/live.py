@@ -3,9 +3,10 @@ from phitech.generators.helpers import (
     write_to_file,
     filename_to_cls,
     parse_ticker_string,
+    interval_to_timeframe_mapping,
 )
 from phitech.templates import (
-    provider_template,
+    live_provider_template,
     live_instruments_template,
     live_instrument_stock_template,
     strategy_import_template,
@@ -18,7 +19,7 @@ from phitech.logger import logger
 
 def generate_live_provider(bot_def):
     provider_def = conf.providers[bot_def.live.provider]
-    return provider_template.format(
+    return live_provider_template.format(
         host=provider_def.host,
         port=provider_def.port,
         client_id=bot_def.live.client_id,
@@ -55,12 +56,13 @@ def generate_live_instruments(bot_def, bot_name):
             underlying_type,
             live_type,
             exchange,
-            timeframe,
-            compression,
+            interval,
             alias,
             start_date,
             end_date,
         ) = parse_ticker_string(ticker_str)
+        compression, tf = interval.split(' ')
+        timeframe = interval_to_timeframe_mapping[tf]
         if underlying_type == "STK":
             istr = live_instrument_stock_template.format(
                 ticker=ticker,

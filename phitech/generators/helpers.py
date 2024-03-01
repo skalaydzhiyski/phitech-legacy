@@ -2,11 +2,22 @@ from phitech import conf
 from phitech.logger import logger
 
 
+interval_to_timeframe_mapping = {
+    'secs': 'Seconds',
+    'min': 'Minutes',
+    'mins': 'Minutes',
+    'hour': 'Hours',
+    'hours': 'Hours',
+    'day': 'Days',
+    'days': 'Days',
+    # Note: weeks in IB are 1W and months are 1M with no space...I don't even know
+}
+
 def parse_ticker_string(ticker_str):
     instrument_str, range_str = ticker_str.split("|")
-    ticker, underlying_type, livetype, exchange, timeframe, compression, alias = instrument_str.split(".")
+    ticker, underlying_type, livetype, exchange, interval, alias = instrument_str.split(".")
     start_date, end_date = range_str.split("/")
-    return (ticker, underlying_type, livetype, exchange, timeframe, compression, alias, start_date, end_date)
+    return (ticker, underlying_type, livetype, exchange, interval, alias, start_date, end_date)
 
 
 def parse_sets_string(sets_string, name=None):

@@ -1,8 +1,17 @@
-provider_template = """
+live_provider_template = """
 from atreyu_backtrader_api import IBStore
 
 
 provider = IBStore(host="{host}", port={port}, clientId={client_id})
+"""
+
+backtest_provider_template = """
+import phitech.helpers.ib as ib
+from logger import logger
+
+
+provider = ib.get_client(mode="{provider_name}", client_id={client_id})
+logger.info(provider)
 """
 
 live_instrument_stock_template = """
@@ -21,19 +30,10 @@ instruments.append(("{alias}", instrument_{alias}))
 """
 
 backtest_instrument_stock_template = """
-instrument_{alias} = provider.getdata(
-    name="{ticker}",
-    dataname="{ticker}",
-    secType="{security_type}",
-    exchange="{exchange}",
-    currency="USD", 
-    what="TRADES",
-    historical=True,
-    timeframe=bt.TimeFrame.{timeframe},
-    compression={compression},
-    fromdate=datetime.fromisoformat("{from_date}"),
-    todate=datetime.fromisoformat("{to_date}"),
-    rtbar=True,
+contract = Contract(secType="{underlying_type}", symbol="{ticker}", exchange="{exchange}", currency='USD')
+provider.qualifyContracts(contract)
+instrument_{alias} = ib.get_historical_bars(
+	provider, contract, "{start_date}", "{end_date}", "{interval}"
 )
 instruments.append(("{alias}", instrument_{alias}))
 """
@@ -50,6 +50,8 @@ instruments = []
 
 backtest_instruments_template = """
 from bots.{bot_kind}.{bot_name}.backtest.{backtest_name}.provider import provider
+import phitech.helpers.ib as ib
+from ib_insync.contract import Contract
 import backtrader as bt
 from datetime import datetime
 
@@ -85,12 +87,12 @@ import time
 engine = bt.Cerebro()
 
 for alias, instrument in instruments:
-	engine.adddata(instrument, name=alias)
+	data = bt.feeds.PandasData(dataname=instrument)
+	engine.adddata(data, name=alias)
 
 for strategy, config in strategies:
 	engine.addstrategy(strategy, **config)
 
-logger.info("sleep for 1 second to allow for smooth boot")
 time.sleep(1)
 engine.run()
 """
@@ -111,7 +113,6 @@ for alias, instrument in instruments:
 for strategy, config in strategies:
 	engine.addstrategy(strategy, **config)
 
-logger.info("sleep for 1 second to allow for smooth boot")
 time.sleep(1)
 engine.run()
 """

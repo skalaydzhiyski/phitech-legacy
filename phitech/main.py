@@ -7,6 +7,7 @@ import os
 import sys
 import yaml
 import subprocess as sp
+import time
 
 
 @click.group("cli")
@@ -65,6 +66,7 @@ def bot(name, backtest=None, live=False):
                 logger.info(f"run set -> {set_dir.split('_')[-1]}")
                 bt_run_cmd = f"python {base_sets_path}/{set_dir}/runner.py"
                 os.system(bt_run_cmd)
+                time.sleep(1)
         logger.info("done.")
 
 

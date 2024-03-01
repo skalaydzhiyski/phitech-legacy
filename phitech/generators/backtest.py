@@ -2,7 +2,7 @@ from phitech import conf, const
 from phitech.logger import logger
 from phitech.generators.helpers import write_to_file, filename_to_cls, parse_ticker_string, parse_sets_string
 from phitech.templates import (
-    provider_template,
+    backtest_provider_template,
     backtest_instruments_template,
     backtest_instrument_stock_template,
     strategy_import_template,
@@ -14,9 +14,8 @@ from phitech.templates import (
 
 def generate_backtest_provider(backtest_def):
     provider_def = conf.providers[backtest_def.provider]
-    return provider_template.format(
-        host=provider_def.host,
-        port=provider_def.port,
+    return backtest_provider_template.format(
+        provider_name=backtest_def.provider,
         client_id=backtest_def.broker.client_id,
     )
 
@@ -30,8 +29,7 @@ def generate_backtest_instruments(tickers, bot_kind, bot_name, backtest_name):
             underlying_type,
             _,
             exchange,
-            timeframe,
-            compression,
+            interval,
             alias,
             start_date,
             end_date,
@@ -39,12 +37,11 @@ def generate_backtest_instruments(tickers, bot_kind, bot_name, backtest_name):
         if underlying_type == "STK":
             istr = backtest_instrument_stock_template.format(
                 ticker=ticker,
-                security_type=underlying_type,
+                underlying_type=underlying_type,
                 exchange=exchange,
-                timeframe=timeframe,
-                compression=compression,
-                from_date=start_date,
-                to_date=end_date,
+                interval=interval,
+                start_date=start_date,
+                end_date=end_date,
                 alias=alias,
             )
         else:

@@ -7,6 +7,9 @@ import pandas as pd
 import os
 import yaml
 import re
+import datetime
+import math
+from progiter import ProgIter
 
 
 def make_date(date_string):
@@ -27,7 +30,72 @@ def insync_interval_from_bar_type(bar_type):
     return f"{size} {new_agg}"
 
 
-def get_historical_bars(client, contract, end_date, duration, interval):
+valid_intervals = {
+    "5 secs",
+    "10 secs",
+    "15 secs",
+    "30 secs",
+    "1 min",
+    "2 mins",
+    "3 mins",
+    "5 mins",
+    "10 mins",
+    "15 mins",
+    "20 mins",
+    "30 mins",
+}
+
+
+def get_historical_bars(client, contract, start_date, end_date, interval):
+    logger.info(f'getting historical bars for -> {contract.symbol}')
+    sd, ed = datetime.datetime.fromisoformat(start_date), datetime.datetime.fromisoformat(end_date)
+
+    safe_intervals = ["hour", "day", "week", "month"]
+    for si in safe_intervals:
+        if si in interval:
+            duration = f"{int((ed - sd).days) + 1} D"
+            res = get_historical_bars_default(client, contract, end_date, duration, interval)
+            res.index = res.index.tz_convert(None) 
+            res = res[res.index >= sd]
+            return res
+
+    if interval not in valid_intervals:
+        raise Exception("invalid interval")
+
+    if "secs" in interval and (datetime.datetime.now() - sd).days > 6 * 30:
+        raise Exception("data too old to be retrieved for `secs` interval")
+
+    diff = int((ed - sd).days) + 1
+    max_lookback_days = 3 if "secs" in interval else 20  # if "min"
+
+    if diff > max_lookback_days:
+        logger.info("multipart data pull")
+        n_requests = diff // max_lookback_days + 1
+        if n_requests > 100:
+            raise Exception("too many requests required for date range")
+
+        res = pd.DataFrame()
+        for _ in ProgIter(range(n_requests)):
+            current = get_historical_bars_default(
+                client, contract, ed.strftime("%Y-%m-%d"), f"{max_lookback_days} D", interval
+            )
+            if current is None:
+                raise Exception("IB returns None, probably data is too old for interval")
+            ed = current.index.min()
+            res = pd.concat([current, res])
+
+        res.index = res.index.tz_convert(None) 
+        res = res[res.index >= sd]
+        return res
+
+    res = get_historical_bars_default(client, contract, end_date, f"{diff} D", interval)
+    res.index = res.index.tz_convert(None) 
+    res = res[res.index >= sd]
+    return res
+
+
+
+def get_historical_bars_default(client, contract, end_date, duration, interval):
     res = client.reqHistoricalData(
         contract,
         endDateTime=make_date(end_date),
@@ -39,6 +107,7 @@ def get_historical_bars(client, contract, end_date, duration, interval):
     res = util.df(res)
     res["date"] = pd.to_datetime(res["date"])
     res = res.set_index("date")
+    res = res[[c for c in res.columns if c not in ["average", "barCount"]]]
     return res
 
 
