@@ -50,6 +50,9 @@ def ide():
 def bot(name, backtest=None, live=False):
     from phitech import conf
 
+    logger.info('boot engine')
+    os.system('pt info')
+
     bot_def = conf.bots[name]
     if live:
         logger.info(f"start live execution of -> `{name}`")

@@ -7,11 +7,9 @@ provider = IBStore(host="{host}", port={port}, clientId={client_id})
 
 backtest_provider_template = """
 import phitech.helpers.ib as ib
-from logger import logger
 
 
 provider = ib.get_client(mode="{provider_name}", client_id={client_id})
-logger.info(provider)
 """
 
 live_instrument_stock_template = """
@@ -61,7 +59,7 @@ instruments = []
 """
 
 strategy_import_template = """
-from ip.strategies.{strategy_kind}.{strategy_name} import {strategy_cls}
+from ip.strats.{strategy_kind}.{strategy_name} import {strategy_cls}
 """
 
 strategy_template = """
@@ -129,6 +127,8 @@ class {strategy_name}(bt.Strategy):
     )
 
     def __init__(self):
+        logger.info(f"init called for strategy -> {{self.__class__}}")
+
         # init datas
         self.t = dotdict(self.dnames)
 
