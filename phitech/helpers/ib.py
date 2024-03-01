@@ -47,7 +47,7 @@ valid_intervals = {
 
 
 def get_historical_bars(client, contract, start_date, end_date, interval):
-    logger.info(f'getting historical bars for -> {contract.symbol}')
+    logger.info(f"getting historical bars for -> {contract.symbol}")
     sd, ed = datetime.datetime.fromisoformat(start_date), datetime.datetime.fromisoformat(end_date)
 
     safe_intervals = ["hour", "day", "week", "month"]
@@ -55,7 +55,8 @@ def get_historical_bars(client, contract, start_date, end_date, interval):
         if si in interval:
             duration = f"{int((ed - sd).days) + 1} D"
             res = get_historical_bars_default(client, contract, end_date, duration, interval)
-            res.index = res.index.tz_convert(None) 
+            if " " in str(res.index.dtype):
+                res.index = res.index.tz_convert(None)
             res = res[res.index >= sd]
             return res
 
@@ -84,15 +85,16 @@ def get_historical_bars(client, contract, start_date, end_date, interval):
             ed = current.index.min()
             res = pd.concat([current, res])
 
-        res.index = res.index.tz_convert(None) 
+        if " " in str(res.index.dtype):
+            res.index = res.index.tz_convert(None)
         res = res[res.index >= sd]
         return res
 
     res = get_historical_bars_default(client, contract, end_date, f"{diff} D", interval)
-    res.index = res.index.tz_convert(None) 
+    if " " in str(res.index.dtype):
+        res.index = res.index.tz_convert(None)
     res = res[res.index >= sd]
     return res
-
 
 
 def get_historical_bars_default(client, contract, end_date, duration, interval):

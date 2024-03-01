@@ -3,18 +3,19 @@ from phitech.logger import logger
 
 
 interval_to_timeframe_mapping = {
-    'secs': 'Seconds',
-    'min': 'Minutes',
-    'mins': 'Minutes',
-    'hour': 'Hours',
-    'hours': 'Hours',
-    'day': 'Days',
-    'days': 'Days',
+    "secs": "Seconds",
+    "min": "Minutes",
+    "mins": "Minutes",
+    "hour": "Hours",
+    "hours": "Hours",
+    "day": "Days",
+    "days": "Days",
     # Note: weeks in IB are 1W and months are 1M with no space...I don't even know
 }
 
+
 def parse_ticker_string(ticker_str):
-    instrument_full_str, alias = ticker_str.split('@')
+    instrument_full_str, alias = ticker_str.split("@")
     instrument_str, range_str = instrument_full_str.split("|")
     ticker, underlying_type, livetype, exchange, interval = instrument_str.split(".")
     start_date, end_date = range_str.split("/")

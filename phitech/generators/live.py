@@ -61,7 +61,7 @@ def generate_live_instruments(bot_def, bot_name):
             start_date,
             end_date,
         ) = parse_ticker_string(ticker_str)
-        compression, tf = interval.split(' ')
+        compression, tf = interval.split(" ")
         timeframe = interval_to_timeframe_mapping[tf]
         if underlying_type == "STK":
             istr = live_instrument_stock_template.format(
