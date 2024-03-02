@@ -2,7 +2,7 @@ import os
 
 
 BASE_DEFINITIONS_PATH = f"{os.environ['PYTHONPATH']}/definitions"
-BASE_STRATEGIES_PATH = f"{os.environ['PYTHONPATH']}/ip/strats"
+BASE_STRATEGIES_PATH = f"{os.environ['PYTHONPATH']}/ip/strategies"
 BASE_DATA_PATH = f"{os.environ['PYTHONPATH']}/data"
 BASE_INDICATORS_PATH = f"{os.environ['PYTHONPATH']}/ip/indicators"
 BASE_ANALYZERS_PATH = f"{os.environ['PYTHONPATH']}/ip/analyzers"

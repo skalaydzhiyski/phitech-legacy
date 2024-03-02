@@ -59,7 +59,7 @@ instruments = []
 """
 
 strategy_import_template = """
-from ip.strats.{strategy_kind}.{strategy_name} import {strategy_cls}
+from ip.strategies.{strategy_kind}.{strategy_name} import {strategy_cls}
 """
 
 strategy_template = """
@@ -127,7 +127,7 @@ class {strategy_name}(bt.Strategy):
     )
 
     def __init__(self):
-        logger.info(f"init called for strategy -> {{self.__class__}}")
+        self.logger = logger.bind(classname=self.__class__.__name__).opt(ansi=True)
 
         # init datas
         self.t = dotdict(self.dnames)
