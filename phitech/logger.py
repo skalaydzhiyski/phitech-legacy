@@ -1,13 +1,12 @@
-import logging
-from rich.pretty import get_console
-from rich.style import Style
+import sys
+from loguru import logger
 
 
-logger = logging.getLogger(__name__)
-syslog = logging.StreamHandler()
-formatter = logging.Formatter("%(asctime)s: %(message)s")
-syslog.setFormatter(formatter)
-logger.setLevel(logging.INFO)
-logger.addHandler(syslog)
+logger.remove()
 
-logger_pretty = get_console()
+logger.add(
+    sys.stderr,
+    format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <5}</level> | {message}",
+    level="DEBUG",
+    colorize=True,
+)
