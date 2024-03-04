@@ -7,8 +7,10 @@ provider = IBStore(host="{host}", port={port}, clientId={client_id})
 
 backtest_provider_template = """
 import phitech.helpers.ib as ib
+import tvDatafeed as tvdf
 
 
+tview = tvdf.TvDatafeed()
 provider = ib.get_client(mode="{provider_name}", client_id={client_id})
 """
 
@@ -20,11 +22,9 @@ instrument_{alias} = provider.getdata(
     exchange="{exchange}",
     currency="USD", 
     what="TRADES",
-    timeframe=bt.TimeFrame.{timeframe},
-    compression={compression},
     tradename="{ticker}-{live_type}-{exchange}-USD"
 )
-instruments.append(("{alias}", instrument_{alias}))
+instruments.append(("{alias}", bt.TimeFrame.{timeframe}, {compression}, instrument_{alias}))
 """
 
 backtest_instrument_stock_template = """
@@ -33,6 +33,11 @@ provider.qualifyContracts(contract)
 instrument_{alias} = ib.get_historical_bars(
 	provider, contract, "{start_date}", "{end_date}", "{interval}"
 )
+instruments.append(("{alias}", instrument_{alias}))
+"""
+
+backtest_tradingview_data_template = """
+instrument_{alias} = tview.get_hist(symbol='{symbol}', exchange='{exchange}', n_bars={n_bars}, interval=tvdf.Interval.{interval})
 instruments.append(("{alias}", instrument_{alias}))
 """
 
@@ -47,10 +52,11 @@ instruments = []
 """
 
 backtest_instruments_template = """
-from bots.{bot_kind}.{bot_name}.backtest.{backtest_name}.provider import provider
+from bots.{bot_kind}.{bot_name}.backtest.{backtest_name}.provider import provider, tview
 import phitech.helpers.ib as ib
 from ib_insync.contract import Contract
 import backtrader as bt
+import tvDatafeed as tvdf
 from datetime import datetime
 
 
@@ -98,6 +104,7 @@ engine.run()
 live_runner_template = """
 from bots.{bot_kind}.{bot_name}.live.instruments import instruments
 from bots.{bot_kind}.{bot_name}.live.strategies import strategies
+from bots.{bot_kind}.{bot_name}.live.provider import provider
 from logger import logger
 import backtrader as bt
 import time
@@ -105,7 +112,11 @@ import time
 
 engine = bt.Cerebro()
 
-for alias, instrument in instruments:
+broker = provider.getbroker()
+engine.setbroker(broker)
+
+for alias, timeframe, compression, instrument in instruments:
+	engine.resampledata(instrument, timeframe=timeframe, compression=compression)
 	engine.adddata(instrument, name=alias)
 
 for strategy, config in strategies:

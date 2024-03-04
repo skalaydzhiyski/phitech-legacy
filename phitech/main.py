@@ -18,8 +18,8 @@ def cli():
 @cli.command("info")
 def info():
     for line in BANNER.split("\n"):
-        logger.opt(ansi=True).info(f"<bold><white>{line}</white></bold>")
-    logger.opt(ansi=True).info("\t   Phi Technologies.\n")
+        logger.opt(ansi=True).info(f" <bold><white>{line}</white></bold>")
+    logger.opt(ansi=True).info("\t    Phi Technologies.\n")
     logger.opt(ansi=True).info("<yellow>A collection of CLI tools and libraries</yellow>")
     logger.opt(ansi=True).info("<yellow>to assist the development and deployment</yellow>")
     logger.opt(ansi=True).info("<yellow>of trading strategies.\n</yellow>")

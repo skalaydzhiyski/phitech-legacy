@@ -50,6 +50,10 @@ def generate_live_instruments(bot_def, bot_name):
         bot_def.live.universe.instruments.set
     ]
     for ticker_str in ticker_set.tickers:
+        if ticker_str.startswith("tradingview"):
+            logger.error("no integration with tradingview for live data (TODO?)")
+            continue
+
         istr = ""
         (
             ticker,
@@ -66,7 +70,7 @@ def generate_live_instruments(bot_def, bot_name):
         if underlying_type == "STK":
             istr = live_instrument_stock_template.format(
                 ticker=ticker,
-                security_type=live_type,  # test what happens if we remove tradename and replace it with live_type here
+                security_type=underlying_type,  # test what happens if we remove tradename and replace it with live_type here
                 exchange=exchange,
                 timeframe=timeframe,
                 compression=compression,

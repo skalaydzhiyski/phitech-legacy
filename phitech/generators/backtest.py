@@ -1,6 +1,12 @@
 from phitech import conf, const
 from phitech.logger import logger
-from phitech.generators.helpers import write_to_file, filename_to_cls, parse_ticker_string, parse_sets_string
+from phitech.generators.helpers import (
+    write_to_file,
+    filename_to_cls,
+    parse_ticker_string,
+    parse_sets_string,
+    parse_tradingview_ticker_string,
+)
 from phitech.templates import (
     backtest_provider_template,
     backtest_instruments_template,
@@ -9,6 +15,7 @@ from phitech.templates import (
     strategy_template,
     strategies_template,
     backtest_runner_template,
+    backtest_tradingview_data_template,
 )
 
 
@@ -24,28 +31,39 @@ def generate_backtest_instruments(tickers, bot_kind, bot_name, backtest_name):
     instrument_strings = []
     for ticker_str in tickers:
         istr = ""
-        (
-            ticker,
-            underlying_type,
-            _,
-            exchange,
-            interval,
-            alias,
-            start_date,
-            end_date,
-        ) = parse_ticker_string(ticker_str)
-        if underlying_type == "STK":
-            istr = backtest_instrument_stock_template.format(
-                ticker=ticker,
-                underlying_type=underlying_type,
+        if ticker_str.startswith("tradingview"):
+            logger.info("tradingview request in instruments")
+            symbol, exchange, n_bars, interval, alias = parse_tradingview_ticker_string(ticker_str)
+            istr = backtest_tradingview_data_template.format(
+                symbol=symbol,
                 exchange=exchange,
+                n_bars=n_bars,
                 interval=interval,
-                start_date=start_date,
-                end_date=end_date,
                 alias=alias,
             )
         else:
-            raise NotImplementedError("not ready yet")
+            (
+                ticker,
+                underlying_type,
+                _,
+                exchange,
+                interval,
+                alias,
+                start_date,
+                end_date,
+            ) = parse_ticker_string(ticker_str)
+            if underlying_type == "STK":
+                istr = backtest_instrument_stock_template.format(
+                    ticker=ticker,
+                    underlying_type=underlying_type,
+                    exchange=exchange,
+                    interval=interval,
+                    start_date=start_date,
+                    end_date=end_date,
+                    alias=alias,
+                )
+            else:
+                raise NotImplementedError("not ready yet")
         instrument_strings.append(istr)
 
     instruments_str = "".join(instrument_strings)
