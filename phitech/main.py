@@ -17,7 +17,6 @@ def cli():
 
 @cli.command("info")
 def info():
-    # think about how we can use rich to print the banner in bold white.
     for line in BANNER.split("\n"):
         logger.opt(ansi=True).info(f"<bold><white>{line}</white></bold>")
     logger.opt(ansi=True).info("\t   Phi Technologies.\n")

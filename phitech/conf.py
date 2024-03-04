@@ -14,6 +14,8 @@ strategy_configs = make_dot_children(strategy_configs)
 providers = parse_yaml(f"{const.BASE_DEFINITIONS_PATH}/providers.yml")
 providers = make_dot_children(providers)
 
+ranges = parse_yaml(f"{const.BASE_DEFINITIONS_PATH}/ranges.yml")
+
 backtests = parse_yaml(f"{const.BASE_DEFINITIONS_PATH}/backtests.yml")
 backtests = make_dot_children(backtests)
 

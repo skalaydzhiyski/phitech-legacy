@@ -17,6 +17,8 @@ interval_to_timeframe_mapping = {
 def parse_ticker_string(ticker_str):
     instrument_str, range_str, alias = ticker_str.split("|")
     ticker, underlying_type, livetype, exchange, interval = instrument_str.split(".")
+    if '/' not in range_str:
+        range_str = conf.ranges[range_str]
     start_date, end_date = range_str.split("/")
     return (ticker, underlying_type, livetype, exchange, interval, alias, start_date, end_date)
 
