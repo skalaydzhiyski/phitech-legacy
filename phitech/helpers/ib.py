@@ -53,7 +53,12 @@ def get_historical_bars(client, contract, start_date, end_date, interval):
     safe_intervals = ["hour", "day", "week", "month"]
     for si in safe_intervals:
         if si in interval:
-            duration = f"{int((ed - sd).days) + 1} D"
+            diff_days = int((ed - sd).days) + 1
+            if diff_days >= 365:
+                duration = f"{math.ceil(diff_days / 365)} Y"
+            else:
+                duration = f"{diff_days} D"
+
             res = get_historical_bars_default(client, contract, end_date, duration, interval)
             if " " in str(res.index.dtype):
                 res.index = res.index.tz_convert(None)

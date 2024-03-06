@@ -14,6 +14,7 @@ from phitech.templates import (
     strategy_import_template,
     strategy_template,
     strategies_template,
+    analyzer_template,
     backtest_runner_template,
     backtest_tradingview_data_template,
 )
@@ -127,6 +128,8 @@ def generate_backtest(backtest_name, bot_name, bot_def):
             bot_name=bot_name,
             backtest_name=backtest_name,
             set_idx=idx,
+            analyzers_name=bot_def.backtest.analyzers,
+            starting_balance=backtest_def.broker.starting_balance,
         )
         write_to_file(backtest_runner_str, f"{base_backtest_path}/sets/set_{idx}/runner.py")
 

@@ -20,7 +20,7 @@ instrument_{alias} = provider.getdata(
     dataname="{ticker}",
     secType="{security_type}",
     exchange="{exchange}",
-    currency="USD", 
+    currency="USD",
     what="TRADES",
     tradename="{ticker}-{live_type}-{exchange}-USD"
 )
@@ -80,15 +80,21 @@ strategies = []
 {strategies}
 """
 
+analyzer_template = """
+engine.addanalyzer(analyzers.{name}.{analyzer_cls}, _name='{name}')
+"""
+
 backtest_runner_template = """
 from bots.{bot_kind}.{bot_name}.backtest.{backtest_name}.sets.set_{set_idx}.instruments import instruments
 from bots.{bot_kind}.{bot_name}.backtest.{backtest_name}.strategies import strategies
+from ip.analyzers.{analyzers_name} import add_analyzers, make_report_df
 from logger import logger
 import backtrader as bt
 import time
 
 
 engine = bt.Cerebro()
+engine.broker.setcash({starting_balance})
 
 for alias, instrument in instruments:
 	data = bt.feeds.PandasData(dataname=instrument)
@@ -97,8 +103,14 @@ for alias, instrument in instruments:
 for strategy, config in strategies:
 	engine.addstrategy(strategy, **config)
 
+add_analyzers(engine)
+
 time.sleep(1)
-engine.run()
+strats = engine.run()
+
+report_df = make_report_df(strats)
+logger.info(f"REPORT:")
+logger.info("\\n{{}}".format(report_df))
 """
 
 live_runner_template = """
@@ -147,22 +159,22 @@ class {strategy_name}(bt.Strategy):
 
     def notify_order(self, order):
         # Notification about order status changes
-        pass  
+        pass
 
     def notify_trade(self, trade):
         # Notification about trade updates
-        pass  
+        pass
 
     def prenext(self):
         # Actions before the actual 'next' call
-        pass 
+        pass
 
     def next(self):
         # Main trading logic goes here
         pass
 
     def nextstart(self):
-        # Actions to be performed specifically 
+        # Actions to be performed specifically
         # at the start of a new "next" cycle
         pass
 
@@ -185,12 +197,12 @@ class {indicator_name}(bt.Indicator):
         pass
 
     def once(self, start, end):
-        # Called once to prepare for calculations 
+        # Called once to prepare for calculations
         # (happens at the very beginning of the backtest)
         pass
 
     def prenext(self):
-        # Called right before the 'next' method 
+        # Called right before the 'next' method
         pass
 
     def next(self):
@@ -198,7 +210,7 @@ class {indicator_name}(bt.Indicator):
         pass
 
     def nextstart(self):
-        # Called similarly to the strategy's nextstart 
+        # Called similarly to the strategy's nextstart
         # but at the indicator level
         pass
 """
