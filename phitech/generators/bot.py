@@ -33,7 +33,6 @@ def generate_bot_directory_structure(name):
         logger.info(f"create backtest -> `{backtest_name}`")
         current_backtest_root = f"{backtest_root}/{backtest_name}"
         mkdir_or_replace(current_backtest_root)
-        mkdir_or_replace(f"{current_backtest_root}/reports")
         logger.info("write root files")
         for fname in backtest_files_to_create:
             os.system(f"touch {current_backtest_root}/{fname}")
@@ -47,6 +46,8 @@ def generate_bot_directory_structure(name):
         for idx in set_idxs:
             logger.info(f"create dir for set -> {idx}")
             mkdir_or_replace(f"{current_backtest_root}/sets/set_{idx}")
+            mkdir_or_replace(f"{current_backtest_root}/sets/set_{idx}/report")
+            mkdir_or_replace(f"{current_backtest_root}/sets/set_{idx}/report/img")
 
     live_files_to_create = ["instruments.py", "provider.py", "runner.py", "strategies.py"]
     live_root = f"{bot_root}/live"

@@ -80,14 +80,10 @@ strategies = []
 {strategies}
 """
 
-analyzer_template = """
-engine.addanalyzer(analyzers.{name}.{analyzer_cls}, _name='{name}')
-"""
-
 backtest_runner_template = """
 from bots.{bot_kind}.{bot_name}.backtest.{backtest_name}.sets.set_{set_idx}.instruments import instruments
 from bots.{bot_kind}.{bot_name}.backtest.{backtest_name}.strategies import strategies
-from ip.analyzers.{analyzers_name} import add_analyzers, make_report_df
+from phitech.helpers.backtrader import make_reports
 from logger import logger
 import backtrader as bt
 import time
@@ -103,14 +99,14 @@ for alias, instrument in instruments:
 for strategy, config in strategies:
 	engine.addstrategy(strategy, **config)
 
-add_analyzers(engine)
+engine.addanalyzer(bt.analyzers.SharpeRatio, _name="sharpe")
+engine.addanalyzer(bt.analyzers.SQN, _name="sqn")
+engine.addanalyzer(bt.analyzers.PyFolio, _name="pyfolio", timeframe=bt.TimeFrame.Days)
 
 time.sleep(1)
 strats = engine.run()
 
-report_df = make_report_df(strats)
-logger.info(f"REPORT:")
-logger.info("\\n{{}}".format(report_df))
+make_reports(strats, logger, base_path="bots/{bot_kind}/{bot_name}/backtest/{backtest_name}/sets/set_{set_idx}")
 """
 
 live_runner_template = """
@@ -146,11 +142,12 @@ from logger import logger
 
 class {strategy_name}(bt.Strategy):
     params = (
-    	# TODO: add params here. Ex -> ('period', 12)
+        # TODO: add params here. Ex -> ('period', 12)
     )
 
-    def __init__(self):
-        self.logger = logger.bind(classname=self.__class__.__name__).opt(ansi=True)
+    def __init__(self, some_key=""):
+        self.logger = logger.bind(classname=self.__class__.__name__).opt(colors=True)
+        self.order = None
 
         # init datas
         self.t = dotdict(self.dnames)
@@ -158,20 +155,37 @@ class {strategy_name}(bt.Strategy):
         # indicators
 
     def notify_order(self, order):
-        # Notification about order status changes
-        pass
+        if order.status in [order.Submitted, order.Accepted]:
+            return
+
+        self.order = None
+
+        if order.status in [order.Completed]:
+            if order.isbuy():
+                self.logger.info("<green>BUY execute</green>")
+            else:
+                self.logger.info("<red>SELL execute</red>")
+        elif order.status in [order.Canceled, order.Margin, order.Rejected]:
+            self.logger.error("Order Rejected!")
 
     def notify_trade(self, trade):
-        # Notification about trade updates
-        pass
+        if trade.isopen:
+            self.logger.info('<blue>POSITION OPENED</blue>')
+        elif trade.isclosed:
+            self.logger.info('<blue>POSITION CLOSED</blue>')
+            self.logger.info(
+                f"<blue>TRADE INFO</blue>: pnl: {{trade.pnl:.2f}}, pnl+commm: {{trade.pnlcomm:.2f}}"
+            )
 
     def prenext(self):
         # Actions before the actual 'next' call
         pass
 
     def next(self):
-        # Main trading logic goes here
-        pass
+        if self.order:
+            return
+
+        # logic
 
     def nextstart(self):
         # Actions to be performed specifically
@@ -179,9 +193,9 @@ class {strategy_name}(bt.Strategy):
         pass
 
     def stop(self):
-        # Actions to perform at the end (could be used for reporting)
-        pass
+        self.logger.info("STOP")
 """
+
 blank_indicator_template = """
 import backtrader as bt
 

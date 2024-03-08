@@ -30,6 +30,16 @@ def make():
     pass
 
 
+@cli.group("rm", help="Remover")
+def rm():
+    pass
+
+
+@cli.group("view", help="Viewer")
+def view():
+    pass
+
+
 @cli.group("run", help="Runner")
 def run():
     pass
@@ -43,6 +53,34 @@ def ide():
     assert python_path.split("/")[:-1] == jupyter_path.split("/")[:-1]
     logger.info("running jupyter lab")
     os.system("jupyter lab .")
+
+
+@view.command(help="View reports for a backktest set")
+@click.option("--bot", required=True, help="The name of the bot")
+@click.option("--bt", required=True, help="The name of the backtest")
+@click.option("--sid", required=True, help="The id of the set")
+def report(bot, bt, sid):
+    from phitech import conf, const
+    from PIL import Image
+    from fpdf import FPDF
+    logger.info(f"view report -> bot: {bot}, backtest: {bt}, set: {set}")
+    
+    kind = conf.bots[bot].kind
+    base_img_path = f'{const.BASE_BOTS_PATH}/{kind}/{bot}/backtest/{bt}/sets/set_{sid}/report/img'
+    os.system(f'open {base_img_path}/*.png')
+
+
+@rm.command(help="Remove a bot")
+@click.option("--name", required=True, help="The name of the bot")
+def bot(name):
+    from phitech import conf
+
+    kind = conf.bots[name].kind
+    logger.info(f"remove -> bots/{kind}/{name}")
+    os.system(f"rm -rf ./bots/{kind}/{name}")
+    if len(os.listdir(f"./bots/{kind}")) == 0:
+        logger.info("empty kind, remove")
+        os.system(f"rm -rf ./bots/{kind}")
 
 
 @run.command(help="Run a bot backtest or live.")
