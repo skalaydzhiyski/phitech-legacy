@@ -63,11 +63,12 @@ def report(bot, bt, sid):
     from phitech import conf, const
     from PIL import Image
     from fpdf import FPDF
+
     logger.info(f"view report -> bot: {bot}, backtest: {bt}, set: {set}")
-    
+
     kind = conf.bots[bot].kind
-    base_img_path = f'{const.BASE_BOTS_PATH}/{kind}/{bot}/backtest/{bt}/sets/set_{sid}/report/img'
-    os.system(f'open {base_img_path}/*.png')
+    base_img_path = f"{const.BASE_BOTS_PATH}/{kind}/{bot}/backtest/{bt}/sets/set_{sid}/report/img"
+    os.system(f"open {base_img_path}/*.png")
 
 
 @rm.command(help="Remove a bot")

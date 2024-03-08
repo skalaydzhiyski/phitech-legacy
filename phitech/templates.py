@@ -83,7 +83,7 @@ strategies = []
 backtest_runner_template = """
 from bots.{bot_kind}.{bot_name}.backtest.{backtest_name}.sets.set_{set_idx}.instruments import instruments
 from bots.{bot_kind}.{bot_name}.backtest.{backtest_name}.strategies import strategies
-from phitech.helpers.backtrader import make_reports
+from phitech.helpers.backtrader import make_plots, make_perf_report
 from logger import logger
 import backtrader as bt
 import time
@@ -106,7 +106,9 @@ engine.addanalyzer(bt.analyzers.PyFolio, _name="pyfolio", timeframe=bt.TimeFrame
 time.sleep(1)
 strats = engine.run()
 
-make_reports(strats, logger, base_path="bots/{bot_kind}/{bot_name}/backtest/{backtest_name}/sets/set_{set_idx}")
+base_path="bots/{bot_kind}/{bot_name}/backtest/{backtest_name}/sets/set_{set_idx}"
+make_plots(strats, logger, base_path=base_path)
+make_perf_report(strats, logger, persist=True, base_path=base_path)
 """
 
 live_runner_template = """
@@ -138,6 +140,8 @@ blank_strategy_template = """
 import backtrader as bt
 from dotted_dict import DottedDict as dotdict
 from logger import logger
+import datetime
+import math
 
 
 class {strategy_name}(bt.Strategy):
@@ -178,7 +182,6 @@ class {strategy_name}(bt.Strategy):
             )
 
     def prenext(self):
-        # Actions before the actual 'next' call
         pass
 
     def next(self):
@@ -188,8 +191,6 @@ class {strategy_name}(bt.Strategy):
         # logic
 
     def nextstart(self):
-        # Actions to be performed specifically
-        # at the start of a new "next" cycle
         pass
 
     def stop(self):
