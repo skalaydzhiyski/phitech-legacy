@@ -132,9 +132,12 @@ def template(name):
 @make.command(help="Generate a strategy skeleton")
 @click.option("--name", required=True, help="The name of the strategy")
 @click.option("--kind", required=True, help="The kind of the strategy")
-def strategy(name, kind):
+@click.option("--notebook", required=False, is_flag=True, help="Create a notebook for the strategy")
+def strategy(name, kind, notebook):
     from phitech import const
-    from phitech.templates import blank_strategy_template
+    from phitech.templates import (
+        blank_strategy_template,
+    )
 
     kind_path = f"{const.BASE_STRATEGIES_PATH}/{kind}"
     if not os.path.exists(kind_path):
@@ -146,6 +149,24 @@ def strategy(name, kind):
     with open(strategy_path, "w") as f:
         strategy_str = blank_strategy_template.format(strategy_name=filename_to_cls(name))
         f.write(strategy_str)
+
+    if notebook:
+        logger.info("create strategy notebook")
+        kind_notebook_path = f"{const.BASE_NOTEBOOKS_PATH}/strategies/{kind}"
+        if not os.path.exists(kind_notebook_path):
+            os.system(f"mkdir {kind_notebook_path}")
+
+        with open(f"{const.BASE_NOTEBOOKS_PATH}/strategies/base-strategy-template.json", "r") as f:
+            base_nb_template = f.read()
+
+        with open(f"{kind_notebook_path}/{name}.ipynb", "w") as f:
+            # this is a horrific hack... I know
+            notebook_str = (
+                base_nb_template.replace("[kind]", kind)
+                .replace("[strategy_filename]", name)
+                .replace("[strategy_cls]", filename_to_cls(name))
+            )
+            f.write(notebook_str)
 
     logger.info("done.")
 
@@ -219,14 +240,11 @@ def sizer(name, line_name):
 @click.option("--kind", required=True, help="Kind of notebook (explore/strategy)")
 @click.option("--name", required=True, help="Name of the notebook")
 def notebook(name, kind):
-    from phitech.generators.notebook import generate_exploration_notebook, generate_strategy_notebook
+    from phitech.generators.notebook import generate_exploration_notebook
 
     if kind == "explore":
         logger.info(f"generate exploration notebook -> `{name}`")
         generate_exploration_notebook(name)
-    elif kind == "strategy":
-        logger.info(f"generate notebook for strategy -> `{name}`")
-        generate_strategy_notebook(name)
 
 
 @make.command(help="Generate a bot from `definitions/bots.yml`")

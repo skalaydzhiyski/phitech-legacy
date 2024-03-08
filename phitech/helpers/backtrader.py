@@ -20,7 +20,7 @@ def make_perf_report(strats, logger=None, persist=False, base_path=None):
         returns, positions, transactions, gross_lev = pfa.get_pf_items()
         extra[idx] = (returns, positions, transactions)
 
-        if len(transactions) == 0:
+        if logger and len(transactions) == 0:
             logger.info("0 transactions found, nothing to report.")
             continue
 
@@ -30,9 +30,9 @@ def make_perf_report(strats, logger=None, persist=False, base_path=None):
             logger.info(f"last account value -> {last_account_value} $")
 
         first_account_value = total_value.iloc[0]
-        total_return = last_account_value / first_account_value
+        total_return = (last_account_value / first_account_value) - 1
         if logger:
-            logger.info(f"total return (pct) -> {total_return*100-100:.4f} %")
+            logger.info(f"total return (pct) -> {total_return*100:.4f} %")
 
         total_trades = len(transactions)
         if logger:
