@@ -2,6 +2,7 @@ import pyfolio as pf
 import pandas as pd
 import matplotlib.pyplot as plt
 import backtrader as bt
+from dotted_dict import DottedDict as dotdict
 
 # TODO: please refactor me
 
@@ -40,7 +41,7 @@ def run_single_strategy_bt(
 
     report, perf = make_perf_report(res)
     report["name"] = name
-    return res, report, perf[0]["total_value"]
+    return res, report, dotdict(perf[0])
 
 
 def make_perf_report(strats, logger=None, persist=False, base_path=None):
