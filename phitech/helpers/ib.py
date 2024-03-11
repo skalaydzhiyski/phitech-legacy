@@ -1,7 +1,9 @@
 from phitech.logger import logger
 from phitech.const import *
+from phitech.generators.helpers import parse_ticker_string
 from dotted_dict import DottedDict as dotdict
 from ib_insync import IB, util
+from ib_insync.contract import *
 import pandas as pd
 
 import os
@@ -10,6 +12,19 @@ import re
 import datetime
 import math
 from progiter import ProgIter
+
+
+def get_historical_bars_for_ticker_strings(client, ticker_strings):
+    instruments = {}
+    for ticker_str in ticker_strings:
+        ticker, utype, _, exchange, interval, alias, start_date, end_date = parse_ticker_string(ticker_str)
+        contract = Contract(secType=utype, symbol=ticker, exchange=exchange, currency="USD")
+        client.qualifyContracts(contract)
+        current = get_historical_bars(
+            client, contract, start_date=start_date, end_date=end_date, interval=interval
+        )
+        instruments[alias] = current
+    return instruments
 
 
 def make_date(date_string):

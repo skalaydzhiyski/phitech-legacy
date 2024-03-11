@@ -1,8 +1,46 @@
 import pyfolio as pf
 import pandas as pd
 import matplotlib.pyplot as plt
+import backtrader as bt
 
 # TODO: please refactor me
+
+
+def run_single_strategy_bt(
+    instruments,
+    strategy_cls,
+    starting_cash,
+    strategy_params={},
+    name="",
+    observers={},
+    analyzers={},
+    sizer=None,
+    plot=True,
+):
+    engine = bt.Cerebro()
+    engine.broker.setcash(starting_cash)
+
+    for instrument_alias, instrument in instruments.items():
+        engine.adddata(bt.feeds.PandasData(dataname=instrument), name=instrument_alias)
+
+    engine.addstrategy(strategy_cls, **strategy_params)
+    engine.addanalyzer(bt.analyzers.SharpeRatio, _name="sharpe")
+    engine.addanalyzer(bt.analyzers.SQN, _name="sqn")
+    engine.addanalyzer(bt.analyzers.PyFolio, _name="pyfolio", timeframe=bt.TimeFrame.Days)
+
+    for analyzer_name, (analyzer_cls, kwargs) in analyzers.items():
+        engine.addanalyzer(analyzer_cls, _name=analyzer_name, **kwargs)
+
+    for observer_name, (observer_cls, kwargs) in observers.items():
+        engine.addobserver(observer_cls, _name=observer_name, **kwargs)
+
+    engine.addsizer(sizer)
+
+    res = engine.run()
+
+    report, perf = make_perf_report(res)
+    report["name"] = name
+    return res, report, perf[0]["total_value"]
 
 
 def make_perf_report(strats, logger=None, persist=False, base_path=None):
@@ -18,13 +56,13 @@ def make_perf_report(strats, logger=None, persist=False, base_path=None):
 
         pfa = strat.analyzers.getbyname("pyfolio")
         returns, positions, transactions, gross_lev = pfa.get_pf_items()
-        extra[idx] = (returns, positions, transactions)
+        total_value = positions["first"] + positions.cash
+        extra[idx] = {"total_value": total_value, "returns": returns, "positions": positions}
 
         if logger and len(transactions) == 0:
             logger.info("0 transactions found, nothing to report.")
             continue
 
-        total_value = positions["first"] + positions.cash
         last_account_value = total_value.iloc[-1]
         if logger:
             logger.info(f"last account value -> {last_account_value} $")

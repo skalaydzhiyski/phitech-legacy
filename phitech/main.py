@@ -68,7 +68,11 @@ def report(bot, bt, sid):
 
     kind = conf.bots[bot].kind
     base_img_path = f"{const.BASE_BOTS_PATH}/{kind}/{bot}/backtest/{bt}/sets/set_{sid}/report/img"
-    os.system(f"open {base_img_path}/*.png")
+    try:
+        os.system(f"open {base_img_path}/*.png")
+    except Exception as e:
+        logger.errror(e)
+        logger.info("Currently only works on MacOS. TODO: make it work for linux as well")
 
 
 @rm.command(help="Remove a bot")
