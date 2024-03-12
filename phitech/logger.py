@@ -10,3 +10,4 @@ logger.add(
     level="DEBUG",
     colorize=True,
 )
+logger = logger.bind(name='phitech-cli')

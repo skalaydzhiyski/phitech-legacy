@@ -1,4 +1,3 @@
-import pyfolio as pf
 import pandas as pd
 import matplotlib.pyplot as plt
 import backtrader as bt
@@ -10,8 +9,8 @@ from dotted_dict import DottedDict as dotdict
 def run_single_strategy_bt(
     instruments,
     strategy_cls,
-    starting_cash,
     strategy_params={},
+    starting_cash=1000000,
     name="",
     observers={},
     analyzers={},
@@ -24,10 +23,10 @@ def run_single_strategy_bt(
     for instrument_alias, instrument in instruments.items():
         engine.adddata(bt.feeds.PandasData(dataname=instrument), name=instrument_alias)
 
-    engine.addstrategy(strategy_cls, **strategy_params)
-    engine.addanalyzer(bt.analyzers.SharpeRatio, _name="sharpe")
-    engine.addanalyzer(bt.analyzers.SQN, _name="sqn")
-    engine.addanalyzer(bt.analyzers.PyFolio, _name="pyfolio", timeframe=bt.TimeFrame.Days)
+    engine.addanalyzer(bt.analyzers.SharpeRatio, _name="stat_sharpe")
+    engine.addanalyzer(bt.analyzers.SQN, _name="stat_sqn")
+    engine.addanalyzer(bt.analyzers.TradeAnalyzer, _name="stat_trade_analyzer")
+    engine.addanalyzer(bt.analyzers.TimeReturn, _name="time_return")
 
     for analyzer_name, (analyzer_cls, kwargs) in analyzers.items():
         engine.addanalyzer(analyzer_cls, _name=analyzer_name, **kwargs)
@@ -37,157 +36,58 @@ def run_single_strategy_bt(
 
     engine.addsizer(sizer)
 
+    engine.addstrategy(strategy_cls, **strategy_params)
+
     res = engine.run()
 
-    report, perf = make_perf_report(res)
+    report, perf, daily_returns = make_perf_report_single_strategy(res[0])
     report["name"] = name
-    return res, report, dotdict(perf[0])
+    perf['name'] = name
+    return res, report, perf
 
 
-def make_perf_report(strats, logger=None, persist=False, base_path=None):
-    if logger:
-        logger.info("-" * 30)
-        logger.info("REPORT METRICS:")
+def make_perf_report_single_strategy(strat, name=""):
+    time_account_value = pd.DataFrame(
+        strat.analyzers.getbyname('time_account_value').get_analysis()['account_value'],
+        columns=['dt', 'cash', 'total_value', 'pct_of_starting']
+    ).set_index('dt')
+    time_account_value.index = pd.to_datetime(time_account_value.index)
 
-    report_data = []
-    extra = {}
-    for idx, strat in enumerate(strats):
-        if logger:
-            logger.info(f"strat {idx}")
+    time_returns = pd.DataFrame(
+        strat.analyzers.getbyname('time_return').get_analysis().items(),
+        columns=['dt', 'returns']
+    ).set_index('dt')
+    time_returns.index = pd.to_datetime(time_returns.index)
 
-        pfa = strat.analyzers.getbyname("pyfolio")
-        returns, positions, transactions, gross_lev = pfa.get_pf_items()
-        total_value = positions["first"] + positions.cash
-        extra[idx] = {"total_value": total_value, "returns": returns, "positions": positions}
+    time_drawdown = pd.DataFrame(
+        strat.analyzers.getbyname('time_drawdown').get_analysis()['drawdown'],
+        columns=['dt', 'drawdown']
+    ).set_index('dt')
+    time_drawdown.index = pd.to_datetime(time_drawdown.index)
 
-        if logger and len(transactions) == 0:
-            logger.info("0 transactions found, nothing to report.")
-            continue
+    total_return = time_account_value.pct_of_starting[-1] - 1
+    sharpe_ratio = strat.analyzers.getbyname('stat_sharpe').get_analysis()['sharperatio']
+    stat_sqn = strat.analyzers.getbyname('stat_sqn').get_analysis()['sqn']
+    max_drawdown = time_drawdown.drawdown.min()
 
-        last_account_value = total_value.iloc[-1]
-        if logger:
-            logger.info(f"last account value -> {last_account_value} $")
+    trade_analyzer_stats = strat.analyzers.getbyname('stat_trade_analyzer').get_analysis()
+    total_closed_trades = trade_analyzer_stats['total']['closed']
+    streak_won_longest = trade_analyzer_stats['streak']['won']['longest']
+    streak_lost_longest = trade_analyzer_stats['streak']['lost']['longest']
+    total_time_in_market = trade_analyzer_stats['len']['total']
+    max_time_in_market = trade_analyzer_stats['len']['max']
+    min_time_in_market = trade_analyzer_stats['len']['min']
+    avg_time_in_market = trade_analyzer_stats['len']['average']
+    avg_time_in_market_won = trade_analyzer_stats['len']['won']['average']
+    avg_time_in_market_lost = trade_analyzer_stats['len']['lost']['average']
 
-        first_account_value = total_value.iloc[0]
-        total_return = (last_account_value / first_account_value) - 1
-        if logger:
-            logger.info(f"total return (pct) -> {total_return*100:.4f} %")
-
-        total_trades = len(transactions)
-        if logger:
-            logger.info(f"total trades -> {total_trades}")
-
-        sharpe_ratio = strat.analyzers.getbyname("sharpe").get_analysis()["sharperatio"]
-        if logger:
-            logger.info(f"sharpe ratio -> {sharpe_ratio:.4f}")
-
-        sqn = strat.analyzers.getbyname("sqn").get_analysis()["sqn"]
-        if logger:
-            logger.info(f"SQN -> {sqn:.4f}")
-
-        report_data.append((idx, total_trades, total_return, sharpe_ratio, sqn))
-        if logger:
-            logger.info("-" * 30)
-
-    report_df = pd.DataFrame(
-        report_data, columns=["strategy_idx", "trades", "total_return", "sharpe_ratio", "sqn"]
+    report = pd.DataFrame(
+        [(total_return, sharpe_ratio, stat_sqn, max_drawdown, total_closed_trades, streak_won_longest, streak_lost_longest, total_time_in_market, max_time_in_market, min_time_in_market, avg_time_in_market, avg_time_in_market_won, avg_time_in_market_lost)],
+        columns=['total_return', 'sharpe_ratio', 'stat_sqn', 'max_drawdown', 'total_closed_trades', 'streak_won_longest', 'streak_lost_longest', 'total_time_in_market', 'max_time_in_market', 'min_time_in_market', 'avg_time_in_market', 'avg_time_in_market_won', 'avg_time_in_market_lost']
     )
 
-    if persist:
-        report_df.to_csv(f"{base_path}/report/report.csv", index=False)
-
-    return report_df, extra
-
-
-def make_plots(strats, logger, base_path=None, show=False):
-    for idx, strat in enumerate(strats):
-        logger.info(f"strat {idx}")
-        logger.info("make plot images")
-
-        pfa = strat.analyzers.getbyname("pyfolio")
-        returns, positions, transactions, gross_lev = pfa.get_pf_items()
-
-        if len(transactions) == 0:
-            logger.info("0 transactions found, nothing to report.")
-            continue
-
-        total_value = positions["first"] + positions.cash
-
-        if show:
-            plt.title("Total Value")
-            total_value.plot()
-            plt.show()
-        else:
-            total_value.plot().get_figure().savefig(f"{base_path}/report/img/strat{idx}-1-total-value.png")
-            plt.figure()
-
-        if show:
-            plt.title("Returns")
-            returns.plot()
-            plt.show()
-        else:
-            returns.plot().get_figure().savefig(f"{base_path}/report/img/strat{idx}-2-returns.png")
-            plt.figure()
-
-        if show:
-            pf.plot_annual_returns(returns)
-            plt.show()
-        else:
-            pf.plot_annual_returns(returns).get_figure().savefig(
-                f"{base_path}/report/img/strat{idx}-3-returns-annual.png"
-            )
-            plt.figure()
-
-        if show:
-            pf.plot_drawdown_underwater(returns)
-            plt.show()
-        else:
-            pf.plot_drawdown_underwater(returns).get_figure().savefig(
-                f"{base_path}/report/img/strat{idx}-4-underwater.png"
-            )
-            plt.figure()
-
-        if show:
-            pf.plot_drawdown_periods(returns)
-            plt.show()
-        else:
-            pf.plot_drawdown_periods(returns).get_figure().savefig(
-                f"{base_path}/report/img/strat{idx}-5-drawdown-periods.png"
-            )
-            plt.figure()
-
-        if show:
-            pf.plot_rolling_sharpe(returns)
-            plt.show()
-        else:
-            pf.plot_rolling_sharpe(returns).get_figure().savefig(
-                f"{base_path}/report/img/strat{idx}-6-rolling-sharpe.png"
-            )
-            plt.figure()
-
-        if show:
-            pf.plot_daily_volume(returns, transactions)
-            plt.show()
-        else:
-            pf.plot_daily_volume(returns, transactions).get_figure().savefig(
-                f"{base_path}/report/img/strat{idx}-7-daily-volume.png"
-            )
-            plt.figure()
-
-        if show:
-            pf.plot_exposures(returns, positions)
-            plt.show()
-        else:
-            pf.plot_exposures(returns, positions).get_figure().savefig(
-                f"{base_path}/report/img/strat{idx}-8-long-short-exposure.png"
-            )
-            plt.figure()
-
-        if show:
-            pf.plot_gross_leverage(returns, positions)
-            plt.show()
-        else:
-            pf.plot_gross_leverage(returns, positions).get_figure().savefig(
-                f"{base_path}/report/img/strat{idx}-9-gross-leverage.png"
-            )
-            plt.figure()
+    perf = pd.concat(
+        [time_account_value, time_drawdown],
+        axis=1
+    )
+    return report, perf, time_returns
