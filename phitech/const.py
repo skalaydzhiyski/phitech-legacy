@@ -14,13 +14,30 @@ BASE_BOTS_PATH = f"{os.environ['PYTHONPATH']}/bots"
 
 TAB = "\t"
 
-EMPTY_CODE_CELL = {
-    "cell_type": "code",
-    "execution_count": None,
-    # "id": "9c7b5364-cb2f-4ebc-8c54-6c5f68cd2233",
-    "metadata": {},
-    "outputs": [],
-    "source": [],
+NOTEBOOK_BASE = {
+ "cells": [
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3 (ipykernel)",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.11.8"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
 }
 
 UNIVERSE_COLUMNS = [
