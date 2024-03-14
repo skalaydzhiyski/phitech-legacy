@@ -1,9 +1,8 @@
 from phitech import conf, const
 from phitech.helpers.glob import mkdir_or_replace, run_formatter
-from phitech.generators.helpers import parse_sets_string
-from phitech.generators.backtest import generate_backtest_runs
+from phitech.generators.backtest import generate_backtests
 from phitech.generators.live import generate_live
-from phitech.logger import logger
+from phitech.logger import logger_lib as logger
 from dotted_dict import DottedDict as dotdict
 
 import os
@@ -20,15 +19,13 @@ def generate_bot_directory_structure(name):
 
     backtest_root = f"{bot_root}/backtest"
     mkdir_or_replace(backtest_root)
+    mkdir_or_replace(f"{backtest_root}/report")
 
     logger.info("create backtest dir")
     backtest_files_to_create = [
-        # "instruments.py",
-        # "runner.py",
-        "provider.py",
-        "strategies.py",
+        "runner.py",
     ]
-    backtest_names = bot_def.backtest.runs
+    backtest_names = bot_def.backtest
     for backtest_name in backtest_names:
         logger.info(f"create backtest -> `{backtest_name}`")
         current_backtest_root = f"{backtest_root}/{backtest_name}"
@@ -37,19 +34,10 @@ def generate_bot_directory_structure(name):
         for fname in backtest_files_to_create:
             os.system(f"touch {current_backtest_root}/{fname}")
 
-        logger.info("create sets dir")
-        mkdir_or_replace(f"{current_backtest_root}/sets")
-        backtest = conf.backtests[backtest_name]
-        set_idxs = parse_sets_string(
-            backtest.universe.instruments.sets, name=backtest.universe.instruments.name
-        )
-        for idx in set_idxs:
-            logger.info(f"create dir for set -> {idx}")
-            mkdir_or_replace(f"{current_backtest_root}/sets/set_{idx}")
-            mkdir_or_replace(f"{current_backtest_root}/sets/set_{idx}/report")
-            mkdir_or_replace(f"{current_backtest_root}/sets/set_{idx}/report/img")
+    logger.info("create provider")
+    os.system(f"touch {backtest_root}/provider.py")
 
-    live_files_to_create = ["instruments.py", "provider.py", "runner.py", "strategies.py"]
+    live_files_to_create = ["instruments.py", "provider.py", "runner.py"]
     live_root = f"{bot_root}/live"
     mkdir_or_replace(live_root)
     logger.info("create live dir")
@@ -59,7 +47,7 @@ def generate_bot_directory_structure(name):
 
 def generate_bot(name):
     logger.info("generate backtests")
-    generate_backtest_runs(name)
+    generate_backtests(name)
 
     logger.info("generate live")
     generate_live(name)

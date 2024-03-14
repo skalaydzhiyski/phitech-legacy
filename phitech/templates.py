@@ -6,12 +6,12 @@ provider = IBStore(host="{host}", port={port}, clientId={client_id})
 """
 
 backtest_provider_template = """
-import phitech.helpers.ib as ib
+import phitech.helpers.ib as ib_helper
 import tvDatafeed as tvdf
 
 
 tview = tvdf.TvDatafeed()
-provider = ib.get_client(mode="{provider_name}", client_id={client_id})
+provider = ib_helper.get_client(mode="{provider_name}", client_id={client_id})
 """
 
 live_instrument_stock_template = """
@@ -25,15 +25,6 @@ instrument_{alias} = provider.getdata(
     tradename="{ticker}-{live_type}-{exchange}-USD"
 )
 instruments.append(("{alias}", bt.TimeFrame.{timeframe}, {compression}, instrument_{alias}))
-"""
-
-backtest_instrument_stock_template = """
-contract = Contract(secType="{underlying_type}", symbol="{ticker}", exchange="{exchange}", currency='USD')
-provider.qualifyContracts(contract)
-instrument_{alias} = ib.get_historical_bars(
-	provider, contract, "{start_date}", "{end_date}", "{interval}"
-)
-instruments.append(("{alias}", instrument_{alias}))
 """
 
 backtest_tradingview_data_template = """
@@ -51,63 +42,66 @@ instruments = []
 {instruments}
 """
 
-backtest_instruments_template = """
-from bots.{bot_kind}.{bot_name}.backtest.{backtest_name}.provider import provider, tview
-import phitech.helpers.ib as ib
-from ib_insync.contract import Contract
-import backtrader as bt
-import tvDatafeed as tvdf
-from datetime import datetime
-
-
-instruments = []
-{instruments}
-"""
-
-strategy_import_template = """
+backtest_runner_template_new = """
 from ip.strategies.{strategy_kind}.{strategy_name} import {strategy_cls}
-"""
-
-strategy_template = """
-strategy_config = {strategy_config}
-strategies.append(({strategy_cls}, strategy_config))
-"""
-
-strategies_template = """
-{strategy_imports}
-
-strategies = []
-{strategies}
-"""
-
-backtest_runner_template = """
-from bots.{bot_kind}.{bot_name}.backtest.{backtest_name}.sets.set_{set_idx}.instruments import instruments
-from bots.{bot_kind}.{bot_name}.backtest.{backtest_name}.strategies import strategies
 from ip.analyzers.time_account_value import TimeAccountValue
 from ip.analyzers.time_drawdown import TimeDrawdown
-import phitech.helpers.backtrader as bthelp
-from logger import logger
-import backtrader as bt
-import time
+from bots.{bot_kind}.{bot_name}.backtest.provider import provider
+from logger import logger_main as logger
+
+import phitech.helpers.ib as ib_helper
+import phitech.helpers.instruments as instr_helper
+import phitech.helpers.backtrader as bt_helper
+
+import pandas as pd
 
 
-logger.info("loading only one strategy. TODO: remove the ability to use multiple strategies per backtest")
-strategy_cls, strategy_conf = strategies[0]
-res, report, perf = bthelp.run_single_strategy_bt(
-    instruments,
-    strategy_cls,
-    strategy_conf,
-    name="simple",
-    analyzers=dict(time_account_value=(TimeAccountValue, {{}}), time_drawdown=(TimeDrawdown, {{}}))
-)
+bt_name = "{backtest_name}"
+strategy = {strategy_cls}
+strategy_conf = {strategy_conf}
+sets = instr_helper.get_ticker_strings_for_instruments("{instruments_name}")
+
+report = pd.DataFrame()
+perf = {{}}
+
+for idx, ticker_strings in enumerate(sets):
+    logger.info(f"running set -> {{idx}}")
+
+    instruments = ib_helper.get_historical_bars_for_ticker_strings(provider, ticker_strings)
+    res_, report_, perf_ = bt_helper.run_single_strategy_bt(
+        instruments,
+        strategy,
+        strategy_conf,
+        name="{strategy_name}",
+        analyzers=dict(time_account_value=(TimeAccountValue, {{}}), time_drawdown=(TimeDrawdown, {{}})),
+    )
+
+    report_['bt_name'] = bt_name
+    report_["set_id"] = idx
+    report = pd.concat([report, report_])
+
+    perf_['bt_name'] = bt_name
+    perf_["set_id"] = idx
+    perf[idx] = perf_
+
+logger.info('report:')
 logger.info(report.T)
+
+report_path = "bots/{bot_kind}/{bot_name}/backtest/report/{backtest_name}_report.csv"
+logger.info(f'persist report -> {{report_path}}')
+report.to_csv(report_path)
+
+for set_id, perf_ in perf.items():
+    perf_path = f"bots/{bot_kind}/{bot_name}/backtest/report/{backtest_name}_set{{set_id}}_perf.csv"
+    logger.info(f'persist perf -> {{perf_path}}')
+    perf_.to_csv(perf_path)
 """
 
 live_runner_template = """
+from ip.strategies.{strategy_kind}.{strategy_name} import {strategy_cls}
 from bots.{bot_kind}.{bot_name}.live.instruments import instruments
-from bots.{bot_kind}.{bot_name}.live.strategies import strategies
 from bots.{bot_kind}.{bot_name}.live.provider import provider
-from logger import logger
+from logger import logger_main as logger
 import backtrader as bt
 import time
 
@@ -121,8 +115,8 @@ for alias, timeframe, compression, instrument in instruments:
 	engine.resampledata(instrument, timeframe=timeframe, compression=compression)
 	engine.adddata(instrument, name=alias)
 
-for strategy, config in strategies:
-	engine.addstrategy(strategy, **config)
+strategy_conf = {strategy_config}
+engine.addstrategy({strategy_cls}, **strategy_conf)
 
 time.sleep(1)
 engine.run()
@@ -131,7 +125,7 @@ engine.run()
 blank_strategy_template = """
 import backtrader as bt
 from dotted_dict import DottedDict as dotdict
-from logger import logger
+from logger import logger_main as logger
 import datetime
 import math
 
@@ -163,7 +157,7 @@ class {strategy_name}(bt.Strategy):
                 self.sell(data, size=size)
             else:
                 self.buy(data, size=size)
-    
+
     def notify_order(self, order):
         if order.status in [order.Submitted, order.Accepted]:
             return
@@ -185,8 +179,9 @@ class {strategy_name}(bt.Strategy):
         if trade.isclosed:
             self.logger.info('<blue>POSITION CLOSED</blue>')
             self.logger.info(
-                f"<blue>TRADE INFO</blue>: pnl: {{trade.pnl:.2f}}, pnlcomm: {{trade.pnlcomm:.2f}}"
+                f"<yellow>TRADE INFO</blue>: pnl: {{trade.pnl:.2f}}, pnlcomm: {{trade.pnlcomm:.2f}}"
             )
+            self.logger.info("*")
 
     def buy(self, data, size, ticker=""):
         self.logger.info(f"<green>BUY submit</green> ticker: {{ticker}}, size: {{size}}")
@@ -195,7 +190,7 @@ class {strategy_name}(bt.Strategy):
     def sell(self, data, size, ticker=""):
         self.logger.info(f"<red>SELL submit</red> ticker: {{ticker}}, size: {{size}}")
         super().sell(data, size=size)
-    
+
     def prenext(self):
         pass
 
@@ -211,15 +206,14 @@ class {strategy_name}(bt.Strategy):
         # pre
         if not self._check_run_next():
             return
-            
-        # logic 
-        
+
+        # logic
 
     def nextstart(self):
         pass
 
     def stop(self):
-        positions = [self.getposition(v) for _,v in self.t.items()]
+        positions = [self.getposition(v) for _, v in self.t.items()]
         open_positions = [p for p in positions if p.upopened != 0]
         self.logger.info(f'open positions -> {{open_positions}}')
         self.logger.info("STOP")
@@ -337,22 +331,20 @@ class {sizer_name}(bt.Sizer):
 """
 
 notebook_base_imports = """
-import pandas as pd
-import numpy as np
-import datetime
-import matplotlib.pyplot as plt
-from ip.analyzers.time_account_value import TimeAccountValue
-from ip.analyzers.time_drawdown import TimeDrawdown
-from phitech.helpers.glob import *
-import phitech.helpers.ib as ib
+import phitech.helpers.ib as ib_helper
 import phitech.helpers.instruments as instrument_helper
-import phitech.helpers.backtrader as bthelp
+import phitech.helpers.backtrader as bt_helper
 from phitech.generators.helpers import parse_ticker_string
+
 from loguru import logger
 logger.disable('__main__')
 
-from ib_insync import IB, util
-from ib_insync.contract import *
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+
+import datetime
+import time
 
 plt.style.use('default')
 plt.rcParams['axes.grid'] = True
@@ -360,6 +352,10 @@ plt.rcParams['grid.alpha'] = .9
 plt.rcParams['grid.color'] = 'gray'
 plt.rcParams['grid.linewidth'] = .5
 plt.rcParams['figure.figsize'] = (9, 5)
+
+if 'client' in locals():
+    client.disconnect()
+    time.sleep(1)
 """
 
 notebook_client_instance = """
@@ -379,7 +375,7 @@ instruments = ib.get_historical_bars_for_ticker_strings(client, ticker_strings)
 """
 
 notebook_single_backtest_runner = """
-res, report, perf = bthelp.run_single_strategy_bt(
+res, report, perf = bt_helper.run_single_strategy_bt(
     instruments,
     SimpleStrategy, {},
     name="simple",
@@ -389,5 +385,5 @@ report
 """
 
 notebook_single_backtest_perf = """
-bthelp.plot_perf(perf)
+bt_helper.plot_perf(perf)
 """

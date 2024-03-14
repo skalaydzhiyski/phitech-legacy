@@ -1,4 +1,4 @@
-from phitech.logger import logger
+from phitech.logger import logger_lib as logger
 from phitech.const import *
 from phitech.generators.helpers import parse_ticker_string
 from dotted_dict import DottedDict as dotdict

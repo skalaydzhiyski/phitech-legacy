@@ -1,4 +1,4 @@
-from phitech.logger import logger
+from phitech.logger import logger_lib as logger
 from phitech.banner import BANNER
 from phitech.generators.helpers import filename_to_cls
 import click
@@ -96,7 +96,7 @@ def bot(name, backtest=None, live=False):
     from phitech import conf
 
     logger.info("boot engine")
-    os.system("pt info")
+    #os.system("pt info")
 
     bot_def = conf.bots[name]
     if live:
@@ -108,13 +108,8 @@ def bot(name, backtest=None, live=False):
         backtests = backtest.split(",")
         for bt_name in backtests:
             logger.info(f"run backtest -> `{bt_name}`")
-            base_sets_path = f"bots/{bot_def.kind}/{name}/backtest/{bt_name}/sets"
-            logger.info(f"run sets for -> {bt_name}")
-            for set_dir in sorted(os.listdir(base_sets_path)):
-                logger.info(f"run set -> {set_dir.split('_')[-1]}")
-                bt_run_cmd = f"python {base_sets_path}/{set_dir}/runner.py"
-                os.system(bt_run_cmd)
-                time.sleep(1)
+            backtest_runner = f"bots/{bot_def.kind}/{name}/backtest/{bt_name}/runner.py"
+            os.system(f"python {backtest_runner}")
         logger.info("done.")
 
 
