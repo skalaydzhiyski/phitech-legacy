@@ -83,32 +83,24 @@ strategies = []
 backtest_runner_template = """
 from bots.{bot_kind}.{bot_name}.backtest.{backtest_name}.sets.set_{set_idx}.instruments import instruments
 from bots.{bot_kind}.{bot_name}.backtest.{backtest_name}.strategies import strategies
-from phitech.helpers.backtrader import make_plots, make_perf_report
+from ip.analyzers.time_account_value import TimeAccountValue
+from ip.analyzers.time_drawdown import TimeDrawdown
+import phitech.helpers.backtrader as bthelp
 from logger import logger
 import backtrader as bt
 import time
 
 
-engine = bt.Cerebro()
-engine.broker.setcash({starting_balance})
-
-for alias, instrument in instruments:
-	data = bt.feeds.PandasData(dataname=instrument)
-	engine.adddata(data, name=alias)
-
-for strategy, config in strategies:
-	engine.addstrategy(strategy, **config)
-
-engine.addanalyzer(bt.analyzers.SharpeRatio, _name="sharpe")
-engine.addanalyzer(bt.analyzers.SQN, _name="sqn")
-engine.addanalyzer(bt.analyzers.PyFolio, _name="pyfolio", timeframe=bt.TimeFrame.Days)
-
-time.sleep(1)
-strats = engine.run()
-
-base_path="bots/{bot_kind}/{bot_name}/backtest/{backtest_name}/sets/set_{set_idx}"
-make_plots(strats, logger, base_path=base_path)
-make_perf_report(strats, logger, persist=True, base_path=base_path)
+logger.info("loading only one strategy. TODO: remove the ability to use multiple strategies per backtest")
+strategy_cls, strategy_conf = strategies[0]
+res, report, perf = bthelp.run_single_strategy_bt(
+    instruments,
+    strategy_cls,
+    strategy_conf,
+    name="simple",
+    analyzers=dict(time_account_value=(TimeAccountValue, {{}}), time_drawdown=(TimeDrawdown, {{}}))
+)
+logger.info(report.T)
 """
 
 live_runner_template = """
