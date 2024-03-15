@@ -387,6 +387,7 @@ from ip.analyzers.time_drawdown import TimeDrawdown
 import phitech.helpers.ib as ib_helper
 import phitech.helpers.instruments as instr_helper
 import phitech.helpers.backtrader as bt_helper
+import phitech.tradingview.helpers as tview_helper
 from phitech.generators.helpers import parse_ticker_string
 
 import logging
@@ -419,6 +420,17 @@ client
 notebook_ticker_strings = """
 ticker_strings = instr_helper.get_ticker_strings_for_instruments("{instruments_name}")
 ticker_strings
+"""
+
+notebook_scanner = """
+tickers = tview_helper.get_scanner_data(
+    Query()
+        .select('name', 'exchange')\
+        .where(
+            Column('exchange').isin(['NASDAQ', 'NYSE']),
+        )
+)
+tickers
 """
 
 notebook_custom_ticker_strings = """

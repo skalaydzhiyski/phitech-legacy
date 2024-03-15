@@ -34,6 +34,7 @@ def generate_strategy_notebook(name, instr_name, strategy_kind):
     cells = [
         make_cell(templates.notebook_base_imports),
         make_cell(templates.notebook_client_instance),
+        make_cell(templates.notebook_scanner),
         make_cell(
             templates.notebook_ticker_strings.format(instruments_name=instr_name)
             if instr_name
@@ -70,6 +71,7 @@ def generate_exploration_notebook(name, instr_name):
     cells = [
         make_cell(templates.notebook_base_imports),
         make_cell(templates.notebook_client_instance),
+        make_cell(templates.notebook_scanner),
         make_cell(
             templates.notebook_ticker_strings.format(instruments_name=instr_name)
             if instr_name
