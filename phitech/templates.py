@@ -126,96 +126,147 @@ blank_strategy_template = """
 import backtrader as bt
 from dotted_dict import DottedDict as dotdict
 from logger import logger_main
+from logger import (
+    red,
+    light_red,
+    green,
+    light_green,
+    yellow,
+    light_yellow,
+    bold,
+    reset,
+)
 import datetime
 import math
+from collections import defaultdict
 
 
 class {strategy_name}(bt.Strategy):
-    params = (
-        # TODO: add params here
-    )
+    params = (("period", 10),)
 
     def __init__(self):
         self.logger = logger_main
-        self.order = None
+        self.orders = {{}}
 
         # init datas
         self.t = dotdict(self.dnames)
-        self.last_frame = self.datas[0].datetime.datetime(-1)
 
         # indicators
+        self.sma_first = bt.indicators.MovingAverageSimple(self.t.first, period=self.params.period)
+        self.sma_second = bt.indicators.MovingAverageSimple(self.t.second, period=self.params.period)
 
-    def _close_all_open_positions(self):
-        self.logger.info("close all open positions")
-        for instrument_name, data in self.dnames.items():
-            if not self.position:
-                continue
-            self.logger.info(f'close positions for -> {{instrument_name}}')
-            position = self.getposition(data)
-            size = -position.size
-            if position.size >= 0:
-                self.sell(data, size=size)
-            else:
-                self.buy(data, size=size)
+        # extra
+        self.flag = {{v: True for v in self.t.values()}}
 
     def notify_order(self, order):
-        if order.status in [order.Submitted, order.Accepted]:
+        if order.status in [order.Submitted]:
+            return
+
+        if order.status in [order.Accepted]:
             return
 
         if order.status in [order.Completed]:
             if order.isbuy():
-                self.logger.info("<green>BUY execute</green>")
+                self.logger.info(f"{{light_green}}BUY execute {{reset}}dname: {{bold}}{{order.data._name}}{{reset}}")
             else:
-                self.logger.info("<red>SELL execute</red>")
+                self.logger.info(f"{{light_red}}SELL execute {{reset}}dname: {{bold}}{{order.data._name}}{{reset}}")
 
         elif order.status in [order.Canceled, order.Margin, order.Rejected]:
             self.logger.error("Order Rejected!")
 
-        self.order = None
+        self.orders = {{i: o for i, o in self.orders.items() if o.ref != order.ref}}
 
     def notify_trade(self, trade):
         if trade.isopen:
-            self.logger.info('<blue>POSITION OPENED</blue>')
+            self.logger.info(f"{{yellow}}POSITION OPENED{{reset}}")
         if trade.isclosed:
-            self.logger.info('<blue>POSITION CLOSED</blue>')
+            self.logger.info(f"{{yellow}}POSITION CLOSED{{reset}}")
             self.logger.info(
-                f"<yellow>TRADE INFO</blue>: pnl: {{trade.pnl:.2f}}, pnlcomm: {{trade.pnlcomm:.2f}}"
+                f"{{light_yellow}}TRADE INFO{{reset}}: dname: {{bold}}{{trade.getdataname()}}{{reset}}, pnl: {{trade.pnl:.2f}}, pnlcomm: {{trade.pnlcomm:.2f}}"
             )
-            self.logger.info("*")
 
-    def buy(self, data, size, ticker=""):
-        self.logger.info(f"<green>BUY submit</green> ticker: {{ticker}}, size: {{size}}")
-        super().buy(data, size=size)
+    def buy(self, data, size):
+        self.logger.info(f"{{green}}BUY submit{{reset}} ticker: {{bold}}{{data._name}}{{reset}}, size: {{size}}")
+        order = super().buy(data, size=size)
+        self.orders[data._name] = order
+        return order
 
-    def sell(self, data, size, ticker=""):
-        self.logger.info(f"<red>SELL submit</red> ticker: {{ticker}}, size: {{size}}")
-        super().sell(data, size=size)
+    def sell(self, data, size):
+        self.logger.info(f"{{red}}SELL submit{{reset}} ticker: {{bold}}{{data._name}}{{reset}}, size: {{size}}")
+        order = super().sell(data, size=size)
+        self.orders[data._name] = order
+        return order
 
     def prenext(self):
         pass
 
-    def _check_run_next(self):
-        if self.order or self.datas[0].datetime.datetime(0) > self.last_frame:
-            return False
-        if self.datas[0].datetime.datetime(0) == self.last_frame:
-            self._close_all_open_positions()
-            return False
-        return True
-
     def next(self):
-        # pre
-        if not self._check_run_next():
-            return
-
         # logic
+        # size = 500
+        # if self._no_open_orders(self.t.first):
+        #     if self.flag:
+        #         if self.t.first.close[0] > self.sma_first[0]:
+        #             self.buy(self.t.first, size=size)
+        #             self.flag = not self.flag
+        #     else:
+        #         if self.t.first.close[0] < self.sma_first[0]:
+        #             self.sell(self.t.first, size=size)
+        #             self.flag = not self.flag
+
+        size = 300
+        if self._no_open_orders(self.t.second):
+            if self.t.second.close[0] > self.sma_second[0]:
+                if self.flag[self.t.second]:
+                    self.buy(self.t.second, size=size)
+                    self.flag[self.t.second] = not self.flag[self.t.second]
+            else:
+                if self.t.second.close[0] < self.sma_second[0]:
+                    if not self.flag[self.t.second]:
+                        self.sell(self.t.second, size=size)
+                        self.flag[self.t.second] = not self.flag[self.t.second]
 
     def nextstart(self):
         pass
 
+    def _view_open_positions(self):
+        open_positions = self._get_all_open_positions()
+        if len(open_positions) == 0:
+            return
+        msg = ", ".join(
+            [f"{{instrument._name}}: {{position.size}}" for instrument, position in open_positions.items()]
+        )
+        self.logger.info(msg)
+
+    def _no_open_orders(self, instrument):
+        return instrument not in self.orders
+
+    def _get_position_for(self, instrument):
+        positions = self._get_all_positions()
+        if instrument in positions:
+            return positions[instrument]
+
+    def _get_open_position_for(self, instrument):
+        open_positions = self._get_all_open_positions()
+        if instrument in open_positions:
+            return open_positions[instrument]
+
+    def _get_all_positions(self):
+        return {{instr: self.getposition(instr) for instr in self.t.values()}}
+
+    def _get_all_open_positions(self):
+        return {{i: p for i, p in self._get_all_positions().items() if p.size != 0}}
+
+    def _close_all_open_positions(self):
+        self.logger.info("close all open positions")
+        for instrument, position in self._get_all_open_positions().items():
+            self.close(instrument, position.size)
+
     def stop(self):
         positions = [self.getposition(v) for _, v in self.t.items()]
         open_positions = [p for p in positions if p.upopened != 0]
-        self.logger.info(f'open positions -> {{open_positions}}')
+        self.logger.info(f"open positions -> {{open_positions}}")
+        if len(open_positions) != 0:
+            self.logger.warning("WARNING: positions still open")
         self.logger.info("STOP")
 """
 
