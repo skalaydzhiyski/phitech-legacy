@@ -132,7 +132,7 @@ def template(name):
 @make.command(help="Generate a strategy skeleton")
 @click.option("--name", required=True, help="The name of the strategy")
 @click.option("--kind", required=True, help="The kind of the strategy")
-def strategy(name, kind, notebook):
+def strategy(name, kind):
     from phitech import const
     from phitech.templates import (
         blank_strategy_template,
