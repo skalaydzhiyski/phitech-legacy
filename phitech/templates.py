@@ -374,16 +374,18 @@ notebook_custom_ticker_strings = """
 ticker_strings = [
 	# TODO: build a list of tickers here
 ]
+set_id = 0
+tickers = ticker_strings[set_id]
 """
 
 notebook_instruments = """
-set_id = 0
-instruments = ib_helper.get_historical_bars_for_ticker_strings(client, ticker_strings[set_id])
+
+instruments = ib_helper.get_historical_bars_for_ticker_strings(client, tickers)
 """
 
 notebook_single_backtest_runner = """
 import logging
-logger_main.setLevel(logging.ERROR)
+logger_main.setLevel(logging.WARNING)
 
 res, report, perf = bt_helper.run_single_strategy_bt(
     instruments,

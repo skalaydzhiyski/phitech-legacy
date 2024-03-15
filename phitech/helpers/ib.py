@@ -150,7 +150,7 @@ def get_historical_ticks(client, contract, start_date, end_date, what_to_show="T
 def get_client(mode="paper_gateway", client_id=2):
     util.startLoop()
     client = IB()
-    port = (4002 if "paper" in mode else 4001) if "gateway" in mode else (7497 if "live" in mode else 7496)
+    port = (4002 if "paper" in mode else 4001) if "gateway" in mode else (7496 if "live" in mode else 7497)
     client.connect(host="127.0.0.1", port=port, clientId=client_id, readonly=True)
     return client
 

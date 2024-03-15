@@ -26,19 +26,19 @@ class MyFormatter(logging.Formatter):
     def format(self, record):
         format_orig = self._style._fmt
 
-        if record.levelname == "DEBUG":
+        if record.levelname == "WARNING":
             self._style._fmt = (
-                f"{light_gray}%(asctime)s {reset}| {bold}{gray}%(levelname)-5s {reset}|  %(message)s"
+                f"{light_gray}%(asctime)s {reset}| {bold}{light_yellow}%(levelname)s {reset}|  %(message)s"
             )
 
         elif record.levelname == "INFO":
             self._style._fmt = (
-                f"{light_gray}%(asctime)s {reset}| {bold}{white}%(levelname)-5s {reset}| %(message)s"
+                f"{light_gray}%(asctime)s {reset}| {bold}{white}%(levelname)-7s {reset}| %(message)s"
             )
 
         elif record.levelname == "ERROR":
             self._style._fmt = (
-                f"{light_gray}%(asctime)s {reset}| {bold}{red}%(levelname)-5s {reset}| %(message)s"
+                f"{light_gray}%(asctime)s {reset}| {bold}{red}%(levelname)-7s {reset}| %(message)s"
             )
 
         res = logging.Formatter.format(self, record)
