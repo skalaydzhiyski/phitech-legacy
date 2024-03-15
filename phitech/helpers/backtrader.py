@@ -9,22 +9,22 @@ import os
 
 def get_reports_for_bot(name):
     kind = conf.bots[name].kind
-    base_path = f'{const.BASE_BOTS_PATH}/{kind}/{name}/backtest/report'
+    base_path = f"{const.BASE_BOTS_PATH}/{kind}/{name}/backtest/report"
     report = pd.DataFrame()
     for path in os.listdir(base_path):
-        if path.endswith('report.csv'):
-            report = pd.concat([report, pd.read_csv(f'{base_path}/{path}')])
+        if path.endswith("report.csv"):
+            report = pd.concat([report, pd.read_csv(f"{base_path}/{path}")])
     return report
 
 
 def get_perf_for_bot(name):
     kind = conf.bots[name].kind
-    base_path = f'{const.BASE_BOTS_PATH}/{kind}/{name}/backtest/report'
+    base_path = f"{const.BASE_BOTS_PATH}/{kind}/{name}/backtest/report"
     perf = {}
     for path in os.listdir(base_path):
-        if path.endswith('_perf.csv'):
-            key = path.split('_perf')[0]
-            perf[key] = pd.read_csv(f'{base_path}/{path}')
+        if path.endswith("_perf.csv"):
+            key = path.split("_perf")[0]
+            perf[key] = pd.read_csv(f"{base_path}/{path}")
     return perf
 
 

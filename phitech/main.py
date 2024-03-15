@@ -97,7 +97,7 @@ def bot(name, backtest=None, live=False):
     from phitech import conf
 
     logger.info("boot engine")
-    #os.system("pt info")
+    # os.system("pt info")
 
     bot_def = conf.bots[name]
     if live:

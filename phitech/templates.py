@@ -370,6 +370,12 @@ ticker_strings = instr_helper.get_ticker_strings_for_instruments("{instruments_n
 ticker_strings
 """
 
+notebook_custom_ticker_strings = """
+ticker_strings = [
+	# TODO: build a list of tickers here
+]
+"""
+
 notebook_instruments = """
 set_id = 0
 instruments = ib_helper.get_historical_bars_for_ticker_strings(client, ticker_strings[set_id])
