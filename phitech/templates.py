@@ -84,17 +84,17 @@ for idx, ticker_strings in enumerate(sets):
     perf_["set_id"] = idx
     perf[idx] = perf_
 
-logger.info('report:')
-logger.info(report.T)
-
 report_path = "bots/{bot_kind}/{bot_name}/backtest/report/{backtest_name}_report.csv"
 logger.info(f'persist report -> {{report_path}}')
-report.to_csv(report_path)
+report.to_csv(report_path, index=False)
 
 for set_id, perf_ in perf.items():
     perf_path = f"bots/{bot_kind}/{bot_name}/backtest/report/{backtest_name}_set{{set_id}}_perf.csv"
     logger.info(f'persist perf -> {{perf_path}}')
-    perf_.to_csv(perf_path)
+    perf_.to_csv(perf_path, index=False)
+
+logger.info('report:')
+logger.info(report.T)
 """
 
 live_runner_template = """
@@ -125,7 +125,7 @@ engine.run()
 blank_strategy_template = """
 import backtrader as bt
 from dotted_dict import DottedDict as dotdict
-from logger import logger_main as logger
+from logger import logger_main
 import datetime
 import math
 
@@ -136,7 +136,7 @@ class {strategy_name}(bt.Strategy):
     )
 
     def __init__(self):
-        self.logger = logger.bind(classname=self.__class__.__name__).opt(colors=True)
+        self.logger = logger_main
         self.order = None
 
         # init datas
@@ -331,13 +331,15 @@ class {sizer_name}(bt.Sizer):
 """
 
 notebook_base_imports = """
+from ip.analyzers.time_account_value import TimeAccountValue
+from ip.analyzers.time_drawdown import TimeDrawdown
 import phitech.helpers.ib as ib_helper
-import phitech.helpers.instruments as instrument_helper
+import phitech.helpers.instruments as instr_helper
 import phitech.helpers.backtrader as bt_helper
 from phitech.generators.helpers import parse_ticker_string
 
-from loguru import logger
-logger.disable('__main__')
+import logging
+logging.getLogger('phitech').setLevel(logging.ERROR)
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -359,27 +361,29 @@ if 'client' in locals():
 """
 
 notebook_client_instance = """
-client = ib.get_client(mode="paper_gateway", client_id=3)
+client = ib_helper.get_client(mode="paper_gateway", client_id=3)
 client
 """
 
 notebook_ticker_strings = """
-ticker_strings = [
-    'NVDA.STK.CFD.SMART.1 min|2024-02-01/2024-03-01|first'
-]
+ticker_strings = instr_helper.get_ticker_strings_for_instruments("{instruments_name}")
 ticker_strings
 """
 
 notebook_instruments = """
-instruments = ib.get_historical_bars_for_ticker_strings(client, ticker_strings)
+set_id = 0
+instruments = ib_helper.get_historical_bars_for_ticker_strings(client, ticker_strings[set_id])
 """
 
 notebook_single_backtest_runner = """
+import logging
+logger_main.setLevel(logging.ERROR)
+
 res, report, perf = bt_helper.run_single_strategy_bt(
     instruments,
-    SimpleStrategy, {},
+    {strategy_cls}, {strategy_config},
     name="simple",
-    analyzers=dict(time_account_value=(TimeAccountValue, {}), time_drawdown=(TimeDrawdown, {}))
+    analyzers=dict(time_account_value=(TimeAccountValue, {{}}), time_drawdown=(TimeDrawdown, {{}}))
 )
 report
 """

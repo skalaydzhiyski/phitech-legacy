@@ -1,9 +1,31 @@
+from phitech import conf, const
 import pandas as pd
 import matplotlib.pyplot as plt
 import backtrader as bt
 from dotted_dict import DottedDict as dotdict
 
-# TODO: please refactor me
+import os
+
+
+def get_reports_for_bot(name):
+    kind = conf.bots[name].kind
+    base_path = f'{const.BASE_BOTS_PATH}/{kind}/{name}/backtest/report'
+    report = pd.DataFrame()
+    for path in os.listdir(base_path):
+        if path.endswith('report.csv'):
+            report = pd.concat([report, pd.read_csv(f'{base_path}/{path}')])
+    return report
+
+
+def get_perf_for_bot(name):
+    kind = conf.bots[name].kind
+    base_path = f'{const.BASE_BOTS_PATH}/{kind}/{name}/backtest/report'
+    perf = {}
+    for path in os.listdir(base_path):
+        if path.endswith('_perf.csv'):
+            key = path.split('_perf')[0]
+            perf[key] = pd.read_csv(f'{base_path}/{path}')
+    return perf
 
 
 def run_single_strategy_bt(
@@ -43,8 +65,8 @@ def run_single_strategy_bt(
     res = engine.run()
 
     report, perf, daily_returns = make_perf_report_single_strategy(res[0])
-    report["name"] = name
-    perf["name"] = name
+    report["strategy_name"] = name
+    perf["strategy"] = name
     return res, report, perf
 
 

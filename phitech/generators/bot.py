@@ -21,6 +21,9 @@ def generate_bot_directory_structure(name):
     mkdir_or_replace(backtest_root)
     mkdir_or_replace(f"{backtest_root}/report")
 
+    notebooks_root = f"{bot_root}/notebooks"
+    mkdir_or_replace(notebooks_root)
+
     logger.info("create backtest dir")
     backtest_files_to_create = [
         "runner.py",

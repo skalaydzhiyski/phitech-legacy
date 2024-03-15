@@ -38,7 +38,6 @@ class MyFormatter(logging.Formatter):
         res = logging.Formatter.format(self, record)
         self._style._fmt = format_orig
 
-        #from IPython import embed; embed()
         return res
 
 
