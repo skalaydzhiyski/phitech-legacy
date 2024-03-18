@@ -2,6 +2,7 @@ from phitech.logger import logger_lib as logger
 from phitech.logger import yellow, bold, white, reset, gray, light_gray
 from phitech.banner import BANNER
 from phitech.generators.helpers import filename_to_cls
+from phitech.helpers.instruments import make_ticker_strings, make_instruments_definition
 import click
 
 import os
@@ -215,6 +216,37 @@ def sizer(name, line_name):
     with open(sizer_path, "w") as f:
         sizer_str = blank_sizer_template.format(sizer_name=filename_to_cls(name, suffix="Sizer"))
         f.write(sizer_str)
+
+
+@make.command(help="Generate instruments")
+@click.option("--name", required=True, help="The name of the instruments definition")
+def instruments(name):
+    tickers = input("tickers [a,b|c,d|...]: ")
+    tickers = [t.strip().upper() for t in tickers.split("|")]
+    tickers = [[t_.strip() for t_ in t.split(",")] for t in tickers]
+    aliases = [t.strip().lower() for t in tickers[0]]
+
+    timeframes = input("timeframes [a,b,..]: ")
+    timeframes = [tf.strip() for tf in timeframes.split(',')]
+    if len(timeframes) == 1:
+        timeframes *= len(tickers[0])
+
+    aliases = input("aliases [a,b,..]: ")
+    if len(aliases.strip()) != 0:
+        aliases = [a.strip() for a in aliases.split(',')]
+    else:
+        aliases = [t.lower() for t in tickers[0]]
+
+    underlying_type = input("underlying type: ").strip().upper()
+    live_type = input("live type: ").strip().upper()
+
+    ranges = input("ranges [l/r|..]: ")
+    ranges = [r.strip().split('/') for r in ranges.split("|")]
+
+    ticker_strings = make_ticker_strings(
+        tickers, underlying_type, live_type, timeframes, aliases, ranges
+    )
+    make_instruments_definition(name, ticker_strings)
 
 
 @make.command(help="Generate a notebook")
