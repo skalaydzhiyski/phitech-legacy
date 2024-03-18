@@ -152,11 +152,8 @@ class {strategy_name}(bt.Strategy):
         self.t = dotdict(self.dnames)
 
         # indicators
-        self.sma_first = bt.indicators.MovingAverageSimple(self.t.first, period=self.params.period)
-        self.sma_second = bt.indicators.MovingAverageSimple(self.t.second, period=self.params.period)
 
         # extra
-        self.flag = {{v: True for v in self.t.values()}}
 
     def notify_order(self, order):
         if order.status in [order.Submitted]:
@@ -201,29 +198,7 @@ class {strategy_name}(bt.Strategy):
         pass
 
     def next(self):
-        # logic
-        # size = 500
-        # if self._no_open_orders(self.t.first):
-        #     if self.flag:
-        #         if self.t.first.close[0] > self.sma_first[0]:
-        #             self.buy(self.t.first, size=size)
-        #             self.flag = not self.flag
-        #     else:
-        #         if self.t.first.close[0] < self.sma_first[0]:
-        #             self.sell(self.t.first, size=size)
-        #             self.flag = not self.flag
-
-        size = 300
-        if self._no_open_orders(self.t.second):
-            if self.t.second.close[0] > self.sma_second[0]:
-                if self.flag[self.t.second]:
-                    self.buy(self.t.second, size=size)
-                    self.flag[self.t.second] = not self.flag[self.t.second]
-            else:
-                if self.t.second.close[0] < self.sma_second[0]:
-                    if not self.flag[self.t.second]:
-                        self.sell(self.t.second, size=size)
-                        self.flag[self.t.second] = not self.flag[self.t.second]
+        pass
 
     def nextstart(self):
         pass
