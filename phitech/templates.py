@@ -46,6 +46,7 @@ backtest_runner_template_new = """
 from ip.strategies.{strategy_kind}.{strategy_name} import {strategy_cls}
 from ip.analyzers.time_account_value import TimeAccountValue
 from ip.analyzers.time_drawdown import TimeDrawdown
+from ip.analyzers.position_returns import PositionReturnsAnalyzer
 from bots.{bot_kind}.{bot_name}.backtest.provider import provider
 from logger import logger_main as logger
 
@@ -68,21 +69,21 @@ for idx, ticker_strings in enumerate(sets):
     logger.info(f"running set -> {{idx}}")
 
     instruments = ib_helper.get_historical_bars_for_ticker_strings(provider, ticker_strings)
-    res_, report_, perf_ = bt_helper.run_single_strategy_bt(
+    btest = bt_helper.run_single_strategy_bt(
         instruments,
         strategy,
         strategy_conf,
         name="{strategy_name}",
-        analyzers=dict(time_account_value=(TimeAccountValue, {{}}), time_drawdown=(TimeDrawdown, {{}})),
+        analyzers=dict(time_account_value=(TimeAccountValue, {{}}), time_drawdown=(TimeDrawdown, {{}}), position_returns=(PositionReturnsAnalyzer, {{}})),
     )
 
-    report_['bt_name'] = bt_name
-    report_["set_id"] = idx
-    report = pd.concat([report, report_])
+    btest['report']['bt_name'] = bt_name
+    btest['report']["set_id"] = idx
+    report = pd.concat([report, btest['report']])
 
-    perf_['bt_name'] = bt_name
-    perf_["set_id"] = idx
-    perf[idx] = perf_
+    btest['perf']['bt_name'] = bt_name
+    btest['perf']["set_id"] = idx
+    perf[idx] = btest['perf']
 
 report_path = "bots/{bot_kind}/{bot_name}/backtest/report/{backtest_name}_report.csv"
 logger.info(f'persist report -> {{report_path}}')
@@ -425,15 +426,15 @@ notebook_single_backtest_runner = """
 import logging
 logger_main.setLevel(logging.WARNING)
 
-res, report, perf = bt_helper.run_single_strategy_bt(
+btest = bt_helper.run_single_strategy_bt(
     instruments,
     {strategy_cls}, {strategy_config},
     name="simple",
     analyzers=dict(time_account_value=(TimeAccountValue, {{}}), time_drawdown=(TimeDrawdown, {{}}))
 )
-report
+btest['report']
 """
 
 notebook_single_backtest_perf = """
-bt_helper.plot_perf(perf)
+bt_helper.plot_perf(btest['perf'])
 """

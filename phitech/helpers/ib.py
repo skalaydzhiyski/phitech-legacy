@@ -16,14 +16,18 @@ from progiter import ProgIter
 
 def get_historical_bars_for_ticker_strings(client, ticker_strings):
     instruments = {}
-    for ticker_str in ticker_strings:
+    for ticker_str in ProgIter(ticker_strings):
         ticker, utype, _, exchange, interval, alias, start_date, end_date = parse_ticker_string(ticker_str)
         contract = Contract(secType=utype, symbol=ticker, exchange=exchange, currency="USD")
         client.qualifyContracts(contract)
-        current = get_historical_bars(
-            client, contract, start_date=start_date, end_date=end_date, interval=interval
-        )
-        instruments[alias] = current
+        try:
+            current = get_historical_bars(
+                client, contract, start_date=start_date, end_date=end_date, interval=interval
+            )
+            instruments[alias] = current
+        except Exception as e:
+            logger.info(f'exception encountered while pulling data for {ticker} -> {e}')
+            return None
     return instruments
 
 

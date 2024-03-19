@@ -45,9 +45,6 @@ def run_single_strategy_bt(
     for instrument_alias, instrument in instruments.items():
         engine.adddata(bt.feeds.PandasData(dataname=instrument), name=instrument_alias)
 
-    engine.addanalyzer(
-        bt.analyzers.SharpeRatio, timeframe=bt.TimeFrame.Days, compression=1, _name="stat_sharpe"
-    )
     engine.addanalyzer(bt.analyzers.SQN, _name="stat_sqn")
     engine.addanalyzer(bt.analyzers.TradeAnalyzer, _name="stat_trade_analyzer")
     engine.addanalyzer(bt.analyzers.TimeReturn, _name="time_return")
@@ -64,10 +61,10 @@ def run_single_strategy_bt(
 
     res = engine.run()
 
-    report, perf, daily_returns = make_perf_report_single_strategy(res[0])
+    report, perf, daily_returns, position_rets = make_perf_report_single_strategy(res[0])
     report["strategy_name"] = name
     perf["strategy"] = name
-    return res, report, perf
+    return {'strat': res[0], 'report': report, 'perf': perf, 'position_rets': position_rets}
 
 
 def plot_perf(perf, intraday=False):
@@ -79,6 +76,8 @@ def plot_perf(perf, intraday=False):
 
 
 def make_perf_report_single_strategy(strat, name=""):
+    position_rets = strat.analyzers.getbyname('position_returns').get_analysis()
+
     time_account_value = pd.DataFrame(
         strat.analyzers.getbyname("time_account_value").get_analysis()["account_value"],
         columns=["dt", "cash", "total_value", "pct_of_starting"],
@@ -96,7 +95,6 @@ def make_perf_report_single_strategy(strat, name=""):
     time_drawdown.index = pd.to_datetime(time_drawdown.index)
 
     total_return = time_account_value.pct_of_starting.iloc[-1] - 1
-    sharpe_ratio = strat.analyzers.getbyname("stat_sharpe").get_analysis()["sharperatio"]
     stat_sqn = strat.analyzers.getbyname("stat_sqn").get_analysis()["sqn"]
     max_drawdown = time_drawdown.drawdown.min()
 
@@ -117,7 +115,6 @@ def make_perf_report_single_strategy(strat, name=""):
         [
             (
                 total_return,
-                sharpe_ratio,
                 stat_sqn,
                 max_drawdown,
                 total_closed_trades,
@@ -133,7 +130,6 @@ def make_perf_report_single_strategy(strat, name=""):
         ],
         columns=[
             "total_return",
-            "sharpe_ratio",
             "stat_sqn",
             "max_drawdown",
             "total_closed_trades",
@@ -149,4 +145,4 @@ def make_perf_report_single_strategy(strat, name=""):
     )
 
     perf = pd.concat([time_account_value, time_drawdown], axis=1)
-    return report, perf, time_returns
+    return report, perf, time_returns, position_rets
