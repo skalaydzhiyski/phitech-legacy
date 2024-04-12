@@ -10,3 +10,4 @@ ipympl
 pyfolio
 humanize
 ib_insync
+progiter
