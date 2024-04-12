@@ -9,3 +9,4 @@ loguru
 ipympl
 pyfolio
 humanize
+ib_insync
