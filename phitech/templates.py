@@ -478,7 +478,7 @@ echo "deploy to sierra"
 echo "release lib"
 echo $RLEASE_DLL_CMD
 echo -n $RLEASE_DLL_CMD > /dev/udp/127.0.0.1/$SC_UDP_PORT
-sleep 1
+sleep 2
 
 echo "copy .dll file to Data/"
 mv $name.dll $base_sierra_dir/Data/
