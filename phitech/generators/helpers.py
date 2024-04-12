@@ -1,5 +1,5 @@
 from phitech import conf
-from phitech.logger import logger
+from phitech.logger import logger_lib as logger
 
 
 interval_to_timeframe_mapping = {
@@ -28,19 +28,6 @@ def parse_ticker_string(ticker_str):
         range_str = conf.ranges[range_str]
     start_date, end_date = range_str.split("/")
     return ticker, underlying_type, livetype, exchange, interval, alias, start_date, end_date
-
-
-def parse_sets_string(sets_string, name=None):
-    if isinstance(sets_string, int):
-        return [sets_string]
-    if sets_string.strip() == "all":
-        n_sets = conf.instruments[name].sets
-        return list(range(len(n_sets)))
-    elif "-" in sets_string.strip():
-        left, right = list(map(int, sets_string.split("-")))
-        return list(range(left, right + 1))
-    elif "," in sets_string.strip():
-        return list(map(int, sets_string.strip().split(",")))
 
 
 def filename_to_cls(name, suffix="Strategy"):

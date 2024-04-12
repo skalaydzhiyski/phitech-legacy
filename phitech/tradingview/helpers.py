@@ -1,5 +1,5 @@
 from phitech.tradingview.scanner import get_all_symbols
-from phitech.logger import logger
+from phitech.logger import logger_lib as logger
 from phitech.tradingview.query import Query, Column
 from phitech.tradingview.scanner import COLUMNS
 from phitech import const

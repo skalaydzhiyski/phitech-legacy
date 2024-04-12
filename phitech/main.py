@@ -1,6 +1,8 @@
-from phitech.logger import logger
+from phitech.logger import logger_lib as logger
+from phitech.logger import yellow, bold, white, reset, gray, light_gray
 from phitech.banner import BANNER
 from phitech.generators.helpers import filename_to_cls
+from phitech.helpers.instruments import make_ticker_strings, make_instruments_definition
 import click
 
 import os
@@ -18,11 +20,11 @@ def cli():
 @cli.command("info")
 def info():
     for line in BANNER.split("\n"):
-        logger.opt(ansi=True).info(f" <bold><white>{line}</white></bold>")
-    logger.opt(ansi=True).info("\t    Phi Technologies.\n")
-    logger.opt(ansi=True).info("<yellow>A collection of CLI tools and libraries</yellow>")
-    logger.opt(ansi=True).info("<yellow>to assist the development and deployment</yellow>")
-    logger.opt(ansi=True).info("<yellow>of trading strategies.\n</yellow>")
+        logger.info(f" {bold}{white}{line}{reset}")
+    logger.info(f"\t    {bold}Phi Technologies.{reset}\n")
+    logger.info(f"{yellow}A collection of CLI tools and libraries{reset}")
+    logger.info(f"{yellow}to assist the development and deployment{reset}")
+    logger.info(f"{yellow}of trading strategies.\n{reset}")
 
 
 @cli.group("make", help="Generator")
@@ -96,7 +98,7 @@ def bot(name, backtest=None, live=False):
     from phitech import conf
 
     logger.info("boot engine")
-    os.system("pt info")
+    # os.system("pt info")
 
     bot_def = conf.bots[name]
     if live:
@@ -108,13 +110,8 @@ def bot(name, backtest=None, live=False):
         backtests = backtest.split(",")
         for bt_name in backtests:
             logger.info(f"run backtest -> `{bt_name}`")
-            base_sets_path = f"bots/{bot_def.kind}/{name}/backtest/{bt_name}/sets"
-            logger.info(f"run sets for -> {bt_name}")
-            for set_dir in sorted(os.listdir(base_sets_path)):
-                logger.info(f"run set -> {set_dir.split('_')[-1]}")
-                bt_run_cmd = f"python {base_sets_path}/{set_dir}/runner.py"
-                os.system(bt_run_cmd)
-                time.sleep(1)
+            backtest_runner = f"bots/{bot_def.kind}/{name}/backtest/{bt_name}/runner.py"
+            os.system(f"python {backtest_runner}")
         logger.info("done.")
 
 
@@ -136,8 +133,7 @@ def template(name):
 @make.command(help="Generate a strategy skeleton")
 @click.option("--name", required=True, help="The name of the strategy")
 @click.option("--kind", required=True, help="The kind of the strategy")
-@click.option("--notebook", required=False, is_flag=True, help="Create a notebook for the strategy")
-def strategy(name, kind, notebook):
+def strategy(name, kind):
     from phitech import const
     from phitech.templates import (
         blank_strategy_template,
@@ -153,24 +149,6 @@ def strategy(name, kind, notebook):
     with open(strategy_path, "w") as f:
         strategy_str = blank_strategy_template.format(strategy_name=filename_to_cls(name))
         f.write(strategy_str)
-
-    if notebook:
-        logger.info("create strategy notebook")
-        kind_notebook_path = f"{const.BASE_NOTEBOOKS_PATH}/strategies/{kind}"
-        if not os.path.exists(kind_notebook_path):
-            os.system(f"mkdir {kind_notebook_path}")
-
-        with open(f"{const.BASE_NOTEBOOKS_PATH}/strategies/base-strategy-template.json", "r") as f:
-            base_nb_template = f.read()
-
-        with open(f"{kind_notebook_path}/{name}.ipynb", "w") as f:
-            # this is a horrific hack... I know
-            notebook_str = (
-                base_nb_template.replace("[kind]", kind)
-                .replace("[strategy_filename]", name)
-                .replace("[strategy_cls]", filename_to_cls(name))
-            )
-            f.write(notebook_str)
 
     logger.info("done.")
 
@@ -240,15 +218,52 @@ def sizer(name, line_name):
         f.write(sizer_str)
 
 
+@make.command(help="Generate instruments")
+@click.option("--name", required=True, help="The name of the instruments definition")
+def instruments(name):
+    tickers = input("tickers [a,b|c,d|...]: ")
+    tickers = [t.strip().upper() for t in tickers.split("|")]
+    tickers = [[t_.strip() for t_ in t.split(",")] for t in tickers]
+    aliases = [t.strip().lower() for t in tickers[0]]
+
+    timeframes = input("timeframes [a,b,..]: ")
+    timeframes = [tf.strip() for tf in timeframes.split(',')]
+    if len(timeframes) == 1:
+        timeframes *= len(tickers[0])
+
+    aliases = input("aliases [a,b,..]: ")
+    if len(aliases.strip()) != 0:
+        aliases = [a.strip() for a in aliases.split(',')]
+    else:
+        aliases = [t.lower() for t in tickers[0]]
+
+    underlying_type = input("underlying type: ").strip().upper()
+    live_type = input("live type: ").strip().upper()
+
+    ranges = input("ranges [l/r|..]: ")
+    ranges = [r.strip().split('/') for r in ranges.split("|")]
+
+    ticker_strings = make_ticker_strings(
+        tickers, underlying_type, live_type, timeframes, aliases, ranges
+    )
+    make_instruments_definition(name, ticker_strings)
+
+
 @make.command(help="Generate a notebook")
-@click.option("--kind", required=True, help="Kind of notebook (explore/strategy)")
 @click.option("--name", required=True, help="Name of the notebook")
-def notebook(name, kind):
-    from phitech.generators.notebook import generate_exploration_notebook
+@click.option("--kind", required=True, help="Kind of notebook (explore/strategy)")
+@click.option("--instruments", required=False, help="Instruments to load")
+def notebook(name, kind, instruments):
+    from phitech.generators.notebook import generate_exploration_notebook, generate_strategy_notebook
 
     if kind == "explore":
         logger.info(f"generate exploration notebook -> `{name}`")
-        generate_exploration_notebook(name)
+        generate_exploration_notebook(name, instruments)
+
+    elif kind == "strategy":
+        logger.info(f"generate strategy notebook -> `{name}`")
+        strategy_kind = input("strategy kind (string): ")
+        generate_strategy_notebook(name, instruments, strategy_kind)
 
 
 @make.command(help="Generate a bot from `definitions/bots.yml`")

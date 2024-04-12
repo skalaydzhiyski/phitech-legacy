@@ -9,12 +9,9 @@ from phitech.templates import (
     live_provider_template,
     live_instruments_template,
     live_instrument_stock_template,
-    strategy_import_template,
-    strategy_template,
-    strategies_template,
     live_runner_template,
 )
-from phitech.logger import logger
+from phitech.logger import logger_lib as logger
 
 
 def generate_live_provider(bot_def):
@@ -87,32 +84,6 @@ def generate_live_instruments(bot_def, bot_name):
     )
 
 
-def generate_live_strategies(bot_def):
-    strategy_imports = "\n".join(
-        [
-            strategy_import_template.format(
-                strategy_kind=sdef.kind,
-                strategy_name=sdef.name,
-                strategy_cls=filename_to_cls(sdef.name),
-            ).strip()
-            for sdef in bot_def.strategies
-        ]
-    )
-    strategies = "".join(
-        [
-            strategy_template.format(
-                strategy_cls=filename_to_cls(sdef.name),
-                strategy_config=conf.strategy_configs[sdef.config].config.to_dict(),
-            )
-            for sdef in bot_def.strategies
-        ]
-    )
-    return strategies_template.format(
-        strategy_imports=strategy_imports,
-        strategies=strategies,
-    )
-
-
 def generate_live(bot_name):
     bot_def = conf.bots[bot_name]
     base_live_path = f"bots/{bot_def.kind}/{bot_name}/live"
@@ -125,12 +96,12 @@ def generate_live(bot_name):
     live_instruments_str = generate_live_instruments(bot_def, bot_name)
     write_to_file(live_instruments_str, f"{base_live_path}/instruments.py")
 
-    logger.info("generate live strategies")
-    live_strategies_str = generate_live_strategies(bot_def)
-    write_to_file(live_strategies_str, f"{base_live_path}/strategies.py")
-
     logger.info("generate live runner")
     live_runner_str = live_runner_template.format(
+        strategy_kind=bot_def.strategy.kind,
+        strategy_name=bot_def.strategy.name,
+        strategy_cls=filename_to_cls(bot_def.strategy.name),
+        strategy_config=conf.strategy_configs[bot_def.strategy.config].config.to_dict(),
         bot_kind=bot_def.kind,
         bot_name=bot_name,
     )

@@ -1,4 +1,4 @@
-from phitech.logger import logger
+from phitech.logger import logger_lib as logger
 from phitech.const import *
 from phitech.generators.helpers import parse_ticker_string
 from dotted_dict import DottedDict as dotdict
@@ -16,14 +16,18 @@ from progiter import ProgIter
 
 def get_historical_bars_for_ticker_strings(client, ticker_strings):
     instruments = {}
-    for ticker_str in ticker_strings:
+    for ticker_str in ProgIter(ticker_strings):
         ticker, utype, _, exchange, interval, alias, start_date, end_date = parse_ticker_string(ticker_str)
         contract = Contract(secType=utype, symbol=ticker, exchange=exchange, currency="USD")
         client.qualifyContracts(contract)
-        current = get_historical_bars(
-            client, contract, start_date=start_date, end_date=end_date, interval=interval
-        )
-        instruments[alias] = current
+        try:
+            current = get_historical_bars(
+                client, contract, start_date=start_date, end_date=end_date, interval=interval
+            )
+            instruments[alias] = current
+        except Exception as e:
+            logger.info(f'exception encountered while pulling data for {ticker} -> {e}')
+            return None
     return instruments
 
 
@@ -150,7 +154,7 @@ def get_historical_ticks(client, contract, start_date, end_date, what_to_show="T
 def get_client(mode="paper_gateway", client_id=2):
     util.startLoop()
     client = IB()
-    port = (4002 if "paper" in mode else 4001) if "gateway" in mode else (7497 if "live" in mode else 7496)
+    port = (4002 if "paper" in mode else 4001) if "gateway" in mode else (7496 if "live" in mode else 7497)
     client.connect(host="127.0.0.1", port=port, clientId=client_id, readonly=True)
     return client
 
