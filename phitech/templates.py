@@ -401,7 +401,7 @@ ticker_strings
 notebook_scanner = """
 tickers = tview_helper.get_scanner_data(
     Query()
-        .select('name', 'exchange')\
+        .select('name', 'exchange')
         .where(
             Column('exchange').isin(['NASDAQ', 'NYSE']),
         )
@@ -437,4 +437,55 @@ btest['report']
 
 notebook_single_backtest_perf = """
 bt_helper.plot_perf(btest['perf'])
+"""
+
+sierra_study_base_script_template = """
+#include "sierrachart.h"
+#include <string>
+
+SCDLLName("{dll_name}")
+
+
+SCSFExport scsf_{func_name}(SCStudyInterfaceRef sc) {{
+  // TODO: add your code here
+}}
+"""
+
+sierra_study_compile_commands_template = """
+[
+  {{
+    "directory": "{sierra_chart_base_dir}",
+    "command": "/usr/bin/x86_64-w64-mingw32-g++ -I /usr/include/c++/11 -I /usr/include/x86_64-linux-gnu/c++/11 -I {sierra_chart_base_dir} -w -s -O2 -m64 -march=native -static -shared {study_name}.cpp -o simple_study_64.dll",
+    "file": "{study_name}.cpp"
+  }}
+]
+"""
+
+sierra_study_build_script_template = """
+#!/bin/bash
+name="{study_name}"
+base_sierra_dir="{sierra_chart_base_dir}"
+
+echo "compile shared library"
+/usr/bin/x86_64-w64-mingw32-g++ -Wall -I $base_sierra_dir/ACS_Source -w -s -O2 -m64 -march=native -static -shared $name.cpp -o $name.dll
+
+SC_UDP_PORT=8898
+WIN_FP=C:\\\\SierraChart\\Data\\\\$name.dll
+RLEASE_DLL_CMD=RELEASE_DLL--$WIN_FP
+RLOAD_DLL_CMD=ALLOW_LOAD_DLL--$WIN_FP
+
+echo "deploy to sierra"
+echo "release lib"
+echo $RLEASE_DLL_CMD
+echo -n $RLEASE_DLL_CMD > /dev/udp/127.0.0.1/$SC_UDP_PORT
+sleep 1
+
+echo "copy .dll file to Data/"
+mv $name.dll $base_sierra_dir/Data/
+
+echo "reload lib"
+echo $RLOAD_DLL_CMD
+echo -n $RLOAD_DLL_CMD > /dev/udp/127.0.0.1/$SC_UDP_PORT
+
+echo "done."
 """

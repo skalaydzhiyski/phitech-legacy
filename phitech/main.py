@@ -1,8 +1,6 @@
 from phitech.logger import logger_lib as logger
 from phitech.logger import yellow, bold, white, reset, gray, light_gray
 from phitech.banner import BANNER
-from phitech.generators.helpers import filename_to_cls
-from phitech.helpers.instruments import make_ticker_strings, make_instruments_definition
 import click
 
 import os
@@ -115,6 +113,54 @@ def bot(name, backtest=None, live=False):
         logger.info("done.")
 
 
+@make.command(help="Generate a SierraChart study")
+@click.option("--name", required=True, help="The name of the SierraChart study")
+@click.option("--replace", is_flag=True, help="The name of the SierraChart study")
+def study(name, replace=False):
+    from phitech.templates import sierra_study_build_script_template, sierra_study_compile_commands_template, sierra_study_base_script_template
+
+    sierra_chart_base_dir = "/home/darchitect/wine-bottles/sierra-chart/drive_c/SierraChart"
+
+    logger.info("make base dir")
+    base_dir = f'.'
+    study_exists = os.path.exists(f'{base_dir}/{name}.cpp')
+    if not study_exists or (study_exists and replace):
+        logger.info("replace specified -> delete old study")
+        os.system(f"rm -rf {base_dir}/{name}.cpp")
+        logger.info("make .cpp file")
+        parts = [w.capitalize() for w in name.split("_")]
+        dll_name = func_name = "_".join(parts)
+        script_str = sierra_study_base_script_template.format(
+            dll_name=dll_name,
+            func_name=func_name,
+        ).strip()
+        with open(f'{base_dir}/{name}.cpp', 'w') as f:
+            f.write(script_str)
+
+        logger.info(f"copy study `{name}.cpp` to project -> {os.environ['PYTHONPATH']}")
+        os.system(f"cp {base_dir}/{name}.cpp {os.environ['PYTHONPATH']}/ip/sierra-studies/")
+
+    logger.info("make build script")
+    build_script_str = sierra_study_build_script_template.format(
+        study_name=name,
+        sierra_chart_base_dir=sierra_chart_base_dir,
+    ).strip()
+    build_script_path = f'{base_dir}/run_build_study_dll.sh'
+    with open(build_script_path, 'w') as f:
+        f.write(build_script_str)
+    os.system(f'chmod +x {build_script_path}')
+
+    logger.info("make compile commands script")
+    compile_commands_str = sierra_study_compile_commands_template.format(
+        study_name=name,
+        sierra_chart_base_dir=sierra_chart_base_dir,
+    ).strip()
+    with open(f'{base_dir}/compile_commands.json', 'w') as f:
+        f.write(compile_commands_str)
+
+    logger.info("done.")
+
+
 @make.command(help="Generate a template from `phitech-templates`")
 @click.option("--name", required=True, help="The name of the template")
 def template(name):
@@ -138,6 +184,7 @@ def strategy(name, kind):
     from phitech.templates import (
         blank_strategy_template,
     )
+    from phitech.generators.helpers import filename_to_cls
 
     kind_path = f"{const.BASE_STRATEGIES_PATH}/{kind}"
     if not os.path.exists(kind_path):
@@ -160,6 +207,7 @@ def strategy(name, kind):
 def indicator(name, kind, line_name):
     from phitech import const
     from phitech.templates import blank_indicator_template
+    from phitech.generators.helpers import filename_to_cls
 
     kind_path = f"{const.BASE_INDICATORS_PATH}/{kind}"
     if not os.path.exists(kind_path):
@@ -180,6 +228,7 @@ def indicator(name, kind, line_name):
 def analyzer(name):
     from phitech import const
     from phitech.templates import blank_analyzer_template
+    from phitech.generators.helpers import filename_to_cls
 
     analyzer_path = f"{const.BASE_ANALYZERS_PATH}/{name}.py"
     logger.info(f"generate analyzer -> `{analyzer_path}`")
@@ -194,6 +243,7 @@ def analyzer(name):
 def observer(name, line_name):
     from phitech import const
     from phitech.templates import blank_observer_template
+    from phitech.generators.helpers import filename_to_cls
 
     observer_path = f"{const.BASE_OBSERVERS_PATH}/{name}.py"
     logger.info(f"generate observer -> `{observer_path}`")
@@ -210,6 +260,7 @@ def observer(name, line_name):
 def sizer(name, line_name):
     from phitech import const
     from phitech.templates import blank_sizer_template
+    from phitech.generators.helpers import filename_to_cls
 
     sizer_path = f"{const.BASE_SIZERS_PATH}/{name}.py"
     logger.info(f"generate sizer -> `{sizer_path}`")
@@ -221,6 +272,8 @@ def sizer(name, line_name):
 @make.command(help="Generate instruments")
 @click.option("--name", required=True, help="The name of the instruments definition")
 def instruments(name):
+    from phitech.helpers.instruments import make_ticker_strings, make_instruments_definition
+
     tickers = input("tickers [a,b|c,d|...]: ")
     tickers = [t.strip().upper() for t in tickers.split("|")]
     tickers = [[t_.strip() for t_ in t.split(",")] for t in tickers]
