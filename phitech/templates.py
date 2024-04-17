@@ -505,7 +505,6 @@ SCSFExport scsf_{func_name}(SCStudyInterfaceRef sc) {{
   SCSubgraphRef sg_sell_exit = sc.Subgraph[3];
 
   // extra subgraphs
-  SCSubgraphRef sg_sma = sc.Subgraph[4];
 
   // inputs
   SCInputRef i_enabled = sc.Input[0];
@@ -542,11 +541,6 @@ SCSFExport scsf_{func_name}(SCStudyInterfaceRef sc) {{
     sg_sell_exit.DrawZeros = false;
 
     // subgraphs
-    sg_sma.Name = "Simple Moving Average";
-    sg_sma.DrawStyle = DRAWSTYLE_LINE;
-    sg_sma.PrimaryColor = RGB(0, 0, 255);
-    sg_sma.LineWidth = 2;
-    sg_sma.DrawZeros = false;
 
     // inputs
     i_enabled.Name = "Enabled";
@@ -581,7 +575,6 @@ SCSFExport scsf_{func_name}(SCStudyInterfaceRef sc) {{
   if (!i_enabled.GetYesNo()) return;
 
   sc.SendOrdersToTradeService = i_send_trades.GetYesNo();
-  sc.SimpleMovAvg(sc.Close, sg_sma, sc.Index, i_sma_period.GetInt());
 
   if (sc.IsFullRecalculation) return;
 
