@@ -114,11 +114,28 @@ def bot(name, backtest=None, live=False):
 
 
 @make.command(help="Generate a SierraChart study")
-@click.option("--name", required=True, help="The name of the SierraChart study")
-@click.option("--replace", is_flag=True, help="The name of the SierraChart study")
-def study(name, replace=False):
+@click.option("--name", required=False, help="The name of the SierraChart study")
+@click.option("--replace", is_flag=True, help="Whether to replace the .cpp file for the study or not.")
+@click.option("--compile", is_flag=True, help="When the study is built, you can compile the study and it will end up in SierraChart")
+def study(name=None, replace=False, compile=False):
     from phitech.templates import sierra_study_build_script_template, sierra_study_compile_commands_template, sierra_study_base_script_template
 
+    if compile:
+        logger.info("make study DLL")
+        logger.info("run build study dll script..")
+        res = os.system("bash ./run_build_study_dll.sh")
+        if res == 0:
+            logger.info("study deployed successfuly!")
+        else:
+            logger.error("something went wrong when building the study")
+        logger.info("done.")
+        return
+
+    if not name:
+        logger.error("No study name!")
+        return
+
+    logger.info(f"study_name -> {name}")
     sierra_chart_base_dir = "/home/darchitect/wine-bottles/sierra-chart/drive_c/SierraChart"
 
     logger.info("make base dir")
