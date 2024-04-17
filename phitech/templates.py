@@ -518,7 +518,7 @@ SCSFExport scsf_{func_name}(SCStudyInterfaceRef sc) {{
   SCInputRef i_send_trades = sc.Input[3];
 
   if (sc.SetDefaults) {{
-    sc.GraphName = "Basic Trend System";
+    sc.GraphName = "{func_name}";
 
     // markers
     sg_buy_entry.Name = "Buy Entry";
