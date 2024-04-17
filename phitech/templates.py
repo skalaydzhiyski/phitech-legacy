@@ -474,7 +474,6 @@ void send_buy_order(int size, bool direction, SCStudyInterfaceRef& sc,
     }}
   }}
   sc.SetPersistentInt(0, internal_order_id);
-  return internal_order_id;
 }}
 
 void send_sell_order(int size, bool direction, SCStudyInterfaceRef& sc,
@@ -502,7 +501,6 @@ void send_sell_order(int size, bool direction, SCStudyInterfaceRef& sc,
     }}
   }}
   sc.SetPersistentInt(0, internal_order_id);
-  return internal_order_id;
 }}
 
 SCSFExport scsf_{func_name}(SCStudyInterfaceRef sc) {{
@@ -592,6 +590,7 @@ SCSFExport scsf_{func_name}(SCStudyInterfaceRef sc) {{
 
   // system
   int size = i_size.GetInt();
+  int internal_order_id = sc.GetPersistentInt(0);
 
   // TODO: system logic here
 }}
