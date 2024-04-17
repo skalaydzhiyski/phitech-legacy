@@ -440,14 +440,165 @@ bt_helper.plot_perf(btest['perf'])
 """
 
 sierra_study_base_script_template = """
-#include "sierrachart.h"
 #include <string>
 
-SCDLLName("{dll_name}")
+#include "sierrachart.h"
 
+SCDLLName("Basic_Trend_System");
+
+// global
+const float marker_offset = 0.05;
+
+// helpers
+void send_buy_order(int size, bool direction, SCStudyInterfaceRef& sc,
+                    SCSubgraphRef& sg_buy_entry, SCSubgraphRef& sg_buy_exit) {{
+  sc.AddMessageToLog("send_buy_order", 0);
+  s_SCNewOrder order;
+  order.OrderQuantity = size;
+  order.OrderType = SCT_ORDERTYPE_MARKET;
+  order.TimeInForce = SCT_TIF_DAY;
+  int res = 0;
+  if (direction) {{
+    res = static_cast<int>(sc.BuyEntry(order));
+    if (res) {{
+      sc.AddMessageToLog("BUY enter", 0);
+      sg_buy_entry[sc.Index] = sc.Low[sc.Index] - marker_offset;
+    }}
+  }} else {{
+    res = static_cast<int>(sc.BuyExit(order));
+    if (res) {{
+      sc.AddMessageToLog("BUY exit", 0);
+      sg_buy_exit[sc.Index] = sc.High[sc.Index] + marker_offset;
+    }}
+  }}
+}}
+
+void send_sell_order(int size, bool direction, SCStudyInterfaceRef& sc,
+                     SCSubgraphRef& sg_sell_entry,
+                     SCSubgraphRef& sg_sell_exit) {{
+  sc.AddMessageToLog("send_sell_order", 0);
+  s_SCNewOrder order;
+  order.OrderQuantity = size;
+  order.OrderType = SCT_ORDERTYPE_MARKET;
+  order.TimeInForce = SCT_TIF_DAY;
+  int res = 0;
+  if (direction) {{
+    res = static_cast<int>(sc.SellEntry(order));
+    if (res) {{
+      sc.AddMessageToLog("SELL enter", 0);
+      sg_sell_entry[sc.Index] = sc.High[sc.Index] + marker_offset;
+    }}
+  }} else {{
+    res = static_cast<int>(sc.SellExit(order));
+    if (res) {{
+      sc.AddMessageToLog("SELL exit", 0);
+      sg_sell_exit[sc.Index] = sc.Low[sc.Index] - marker_offset;
+    }}
+  }}
+}}
 
 SCSFExport scsf_{func_name}(SCStudyInterfaceRef sc) {{
-  // TODO: add your code here
+  // markers
+  SCSubgraphRef sg_buy_entry = sc.Subgraph[0];
+  SCSubgraphRef sg_buy_exit = sc.Subgraph[1];
+  SCSubgraphRef sg_sell_entry = sc.Subgraph[2];
+  SCSubgraphRef sg_sell_exit = sc.Subgraph[3];
+
+  // extra subgraphs
+  SCSubgraphRef sg_sma = sc.Subgraph[4];
+
+  // inputs
+  SCInputRef i_enabled = sc.Input[0];
+  SCInputRef i_sma_period = sc.Input[1];
+  SCInputRef i_size = sc.Input[2];
+  SCInputRef i_send_trades = sc.Input[3];
+
+  if (sc.SetDefaults) {{
+    sc.GraphName = "Basic Trend System";
+
+    // markers
+    sg_buy_entry.Name = "Buy Entry";
+    sg_buy_entry.DrawStyle = DRAWSTYLE_ARROW_UP;
+    sg_buy_entry.PrimaryColor = RGB(0, 145, 0);
+    sg_buy_entry.LineWidth = 2;
+    sg_buy_entry.DrawZeros = false;
+
+    sg_buy_exit.Name = "Buy Exit";
+    sg_buy_exit.DrawStyle = DRAWSTYLE_ARROW_DOWN;
+    sg_buy_exit.PrimaryColor = RGB(145, 0, 0);
+    sg_buy_exit.LineWidth = 2;
+    sg_buy_exit.DrawZeros = false;
+
+    sg_sell_entry.Name = "Sell Entry";
+    sg_sell_entry.DrawStyle = DRAWSTYLE_ARROW_DOWN;
+    sg_sell_entry.PrimaryColor = RGB(145, 0, 0);
+    sg_sell_entry.LineWidth = 2;
+    sg_sell_entry.DrawZeros = false;
+
+    sg_sell_exit.Name = "Sell Exit";
+    sg_sell_exit.DrawStyle = DRAWSTYLE_ARROW_UP;
+    sg_sell_exit.PrimaryColor = RGB(0, 145, 0);
+    sg_sell_exit.LineWidth = 2;
+    sg_sell_exit.DrawZeros = false;
+
+    // subgraphs
+    sg_sma.Name = "Simple Moving Average";
+    sg_sma.DrawStyle = DRAWSTYLE_LINE;
+    sg_sma.PrimaryColor = RGB(0, 0, 255);
+    sg_sma.LineWidth = 2;
+    sg_sma.DrawZeros = false;
+
+    // inputs
+    i_enabled.Name = "Enabled";
+    i_enabled.SetYesNo(1);
+
+    i_sma_period.Name = "SMA Period";
+    i_sma_period.SetInt(20);
+
+    i_size.Name = "Size";
+    i_size.SetInt(10);
+
+    i_send_trades.Name = "Send Orders to Broker";
+    i_send_trades.SetYesNo(1);
+
+    // settings
+    sc.AutoLoop = 1;
+    sc.GraphRegion = 0;
+    sc.AllowMultipleEntriesInSameDirection = false;
+    sc.MaximumPositionAllowed = 100;
+    sc.SupportReversals = false;
+    sc.AllowOppositeEntryWithOpposingPositionOrOrders = false;
+    sc.SupportAttachedOrdersForTrading = false;
+    sc.CancelAllOrdersOnEntriesAndReversals = true;
+    sc.AllowEntryWithWorkingOrders = false;
+    sc.CancelAllWorkingOrdersOnExit = false;
+    sc.AllowOnlyOneTradePerBar = true;
+    sc.MaintainTradeStatisticsAndTradesData = true;
+    return;
+  }}
+
+  // pre
+  if (!i_enabled.GetYesNo()) return;
+
+  sc.SendOrdersToTradeService = i_send_trades.GetYesNo();
+  sc.SimpleMovAvg(sc.Close, sg_sma, sc.Index, i_sma_period.GetInt());
+
+  if (sc.IsFullRecalculation) return;
+
+  auto buy = [&sc, &sg_buy_entry, &sg_sell_entry](int size, bool direction) {{
+    send_buy_order(size, direction, sc, sg_buy_entry, sg_sell_entry);
+  }};
+  auto sell = [&sc, &sg_sell_entry, &sg_sell_exit](int size, bool direction) {{
+    send_sell_order(size, direction, sc, sg_sell_entry, sg_sell_exit);
+  }};
+
+  // system
+  s_SCPositionData position_data;
+  sc.GetTradePosition(position_data);
+
+  int size = i_size.GetInt();
+
+  // TODO: system logic here
 }}
 """
 
