@@ -19,7 +19,7 @@ def cli():
 def info():
     for line in BANNER.split("\n"):
         logger.info(f" {bold}{white}{line}{reset}")
-    logger.info(f"\t    {bold}Phi Technologies.{reset}\n")
+    logger.info(f"\t       {bold}Phi Technologies.{reset}\n")
     logger.info(f"{yellow}A collection of CLI tools and libraries{reset}")
     logger.info(f"{yellow}to assist the development and deployment{reset}")
     logger.info(f"{yellow}of trading strategies.\n{reset}")
