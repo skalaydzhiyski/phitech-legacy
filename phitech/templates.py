@@ -575,6 +575,8 @@ SCSFExport scsf_{func_name}(SCStudyInterfaceRef sc) {{
   if (!i_enabled.GetYesNo()) return;
 
   sc.SendOrdersToTradeService = i_send_trades.GetYesNo();
+  s_SCPositionData position;
+  sc.GetTradePosition(position);
 
   if (sc.IsFullRecalculation) return;
 
@@ -586,9 +588,6 @@ SCSFExport scsf_{func_name}(SCStudyInterfaceRef sc) {{
   }};
 
   // system
-  s_SCPositionData position;
-  sc.GetTradePosition(position);
-
   int size = i_size.GetInt();
 
   // TODO: system logic here
