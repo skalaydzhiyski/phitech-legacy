@@ -487,5 +487,7 @@ echo "reload lib"
 echo $RLOAD_DLL_CMD
 echo -n $RLOAD_DLL_CMD > /dev/udp/127.0.0.1/$SC_UDP_PORT
 
+echo "copy study to $PYTHONPATH project"
+cp $name.cpp $PYTHONPATH/ip/sierra-studies/
 echo "done."
 """
