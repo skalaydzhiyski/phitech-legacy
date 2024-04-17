@@ -516,7 +516,6 @@ SCSFExport scsf_{func_name}(SCStudyInterfaceRef sc) {{
 
   // inputs
   SCInputRef i_enabled = sc.Input[0];
-  SCInputRef i_sma_period = sc.Input[1];
   SCInputRef i_size = sc.Input[2];
   SCInputRef i_send_trades = sc.Input[3];
 
@@ -553,9 +552,6 @@ SCSFExport scsf_{func_name}(SCStudyInterfaceRef sc) {{
     // inputs
     i_enabled.Name = "Enabled";
     i_enabled.SetYesNo(1);
-
-    i_sma_period.Name = "SMA Period";
-    i_sma_period.SetInt(20);
 
     i_size.Name = "Size";
     i_size.SetInt(10);
