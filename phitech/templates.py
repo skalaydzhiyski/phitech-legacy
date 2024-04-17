@@ -452,49 +452,57 @@ const float marker_offset = 0.05;
 // helpers
 void send_buy_order(int size, bool direction, SCStudyInterfaceRef& sc,
                     SCSubgraphRef& sg_buy_entry, SCSubgraphRef& sg_buy_exit) {{
-  sc.AddMessageToLog("send_buy_order", 0);
   s_SCNewOrder order;
   order.OrderQuantity = size;
   order.OrderType = SCT_ORDERTYPE_MARKET;
   order.TimeInForce = SCT_TIF_DAY;
   int res = 0;
+  int internal_order_id = 0;
   if (direction) {{
     res = static_cast<int>(sc.BuyEntry(order));
     if (res) {{
       sc.AddMessageToLog("BUY enter", 0);
       sg_buy_entry[sc.Index] = sc.Low[sc.Index] - marker_offset;
+      internal_order_id = order.InternalOrderID;
     }}
   }} else {{
     res = static_cast<int>(sc.BuyExit(order));
     if (res) {{
       sc.AddMessageToLog("BUY exit", 0);
       sg_buy_exit[sc.Index] = sc.High[sc.Index] + marker_offset;
+      internal_order_id = order.InternalOrderID;
     }}
   }}
+  sc.SetPersistentInt(0, internal_order_id);
+  return internal_order_id;
 }}
 
 void send_sell_order(int size, bool direction, SCStudyInterfaceRef& sc,
                      SCSubgraphRef& sg_sell_entry,
                      SCSubgraphRef& sg_sell_exit) {{
-  sc.AddMessageToLog("send_sell_order", 0);
   s_SCNewOrder order;
   order.OrderQuantity = size;
   order.OrderType = SCT_ORDERTYPE_MARKET;
   order.TimeInForce = SCT_TIF_DAY;
   int res = 0;
+  int internal_order_id = 0;
   if (direction) {{
     res = static_cast<int>(sc.SellEntry(order));
     if (res) {{
       sc.AddMessageToLog("SELL enter", 0);
       sg_sell_entry[sc.Index] = sc.High[sc.Index] + marker_offset;
+      internal_order_id = order.InternalOrderID;
     }}
   }} else {{
     res = static_cast<int>(sc.SellExit(order));
     if (res) {{
       sc.AddMessageToLog("SELL exit", 0);
       sg_sell_exit[sc.Index] = sc.Low[sc.Index] - marker_offset;
+      internal_order_id = order.InternalOrderID;
     }}
   }}
+  sc.SetPersistentInt(0, internal_order_id);
+  return internal_order_id;
 }}
 
 SCSFExport scsf_{func_name}(SCStudyInterfaceRef sc) {{
@@ -573,18 +581,17 @@ SCSFExport scsf_{func_name}(SCStudyInterfaceRef sc) {{
 
   // pre
   if (!i_enabled.GetYesNo()) return;
+  if (sc.IsFullRecalculation) return;
 
   sc.SendOrdersToTradeService = i_send_trades.GetYesNo();
   s_SCPositionData position;
   sc.GetTradePosition(position);
 
-  if (sc.IsFullRecalculation) return;
-
   auto buy = [&sc, &sg_buy_entry, &sg_sell_entry](int size, bool direction) {{
-    send_buy_order(size, direction, sc, sg_buy_entry, sg_sell_entry);
+    return send_buy_order(size, direction, sc, sg_buy_entry, sg_sell_entry);
   }};
   auto sell = [&sc, &sg_sell_entry, &sg_sell_exit](int size, bool direction) {{
-    send_sell_order(size, direction, sc, sg_sell_entry, sg_sell_exit);
+    return send_sell_order(size, direction, sc, sg_sell_entry, sg_sell_exit);
   }};
 
   // system
