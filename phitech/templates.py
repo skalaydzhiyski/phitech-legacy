@@ -586,8 +586,8 @@ SCSFExport scsf_{func_name}(SCStudyInterfaceRef sc) {{
   }};
 
   // system
-  s_SCPositionData position_data;
-  sc.GetTradePosition(position_data);
+  s_SCPositionData position;
+  sc.GetTradePosition(position);
 
   int size = i_size.GetInt();
 
