@@ -444,14 +444,15 @@ sierra_study_base_script_template = """
 
 #include "sierrachart.h"
 
-SCDLLName("Basic_Trend_System");
+SCDLLName("{dll_name}");
 
 // global
 const float marker_offset = 0.05;
 
 // helpers
-void send_buy_order(int size, bool direction, SCStudyInterfaceRef& sc,
-                    SCSubgraphRef& sg_buy_entry, SCSubgraphRef& sg_buy_exit) {{
+void send_buy_order(const int size, const bool direction,
+                    SCStudyInterfaceRef& sc, SCSubgraphRef& sg_buy_entry,
+                    SCSubgraphRef& sg_buy_exit) {{
   s_SCNewOrder order;
   order.OrderQuantity = size;
   order.OrderType = SCT_ORDERTYPE_MARKET;
@@ -460,24 +461,27 @@ void send_buy_order(int size, bool direction, SCStudyInterfaceRef& sc,
   int internal_order_id = 0;
   if (direction) {{
     res = static_cast<int>(sc.BuyEntry(order));
-    if (res) {{
+    sc.AddMessageToLog(sc.GetTradingErrorTextMessage(res), 0);
+    if (res > 0) {{
       sc.AddMessageToLog("BUY enter", 0);
       sg_buy_entry[sc.Index] = sc.Low[sc.Index] - marker_offset;
       internal_order_id = order.InternalOrderID;
     }}
   }} else {{
     res = static_cast<int>(sc.BuyExit(order));
-    if (res) {{
+    sc.AddMessageToLog(sc.GetTradingErrorTextMessage(res), 0);
+    if (res > 0) {{
       sc.AddMessageToLog("BUY exit", 0);
       sg_buy_exit[sc.Index] = sc.High[sc.Index] + marker_offset;
       internal_order_id = order.InternalOrderID;
     }}
   }}
-  sc.SetPersistentInt(0, internal_order_id);
+  sc.AddMessageToLog("internal order id", 0);
+  sc.AddMessageToLog(std::to_string(internal_order_id).c_str(), 0);
 }}
 
-void send_sell_order(int size, bool direction, SCStudyInterfaceRef& sc,
-                     SCSubgraphRef& sg_sell_entry,
+void send_sell_order(const int size, const bool direction,
+                     SCStudyInterfaceRef& sc, SCSubgraphRef& sg_sell_entry,
                      SCSubgraphRef& sg_sell_exit) {{
   s_SCNewOrder order;
   order.OrderQuantity = size;
@@ -487,20 +491,23 @@ void send_sell_order(int size, bool direction, SCStudyInterfaceRef& sc,
   int internal_order_id = 0;
   if (direction) {{
     res = static_cast<int>(sc.SellEntry(order));
-    if (res) {{
+    sc.AddMessageToLog(sc.GetTradingErrorTextMessage(res), 0);
+    if (res > 0) {{
       sc.AddMessageToLog("SELL enter", 0);
       sg_sell_entry[sc.Index] = sc.High[sc.Index] + marker_offset;
       internal_order_id = order.InternalOrderID;
     }}
   }} else {{
     res = static_cast<int>(sc.SellExit(order));
-    if (res) {{
+    sc.AddMessageToLog(sc.GetTradingErrorTextMessage(res), 0);
+    if (res > 0) {{
       sc.AddMessageToLog("SELL exit", 0);
       sg_sell_exit[sc.Index] = sc.Low[sc.Index] - marker_offset;
       internal_order_id = order.InternalOrderID;
     }}
   }}
-  sc.SetPersistentInt(0, internal_order_id);
+  sc.AddMessageToLog("internal order id", 0);
+  sc.AddMessageToLog(std::to_string(internal_order_id).c_str(), 0);
 }}
 
 SCSFExport scsf_{func_name}(SCStudyInterfaceRef sc) {{
@@ -549,7 +556,7 @@ SCSFExport scsf_{func_name}(SCStudyInterfaceRef sc) {{
 
     // inputs
     i_enabled.Name = "Enabled";
-    i_enabled.SetYesNo(1);
+    i_enabled.SetYesNo(0);
 
     i_size.Name = "Size";
     i_size.SetInt(10);
@@ -575,9 +582,13 @@ SCSFExport scsf_{func_name}(SCStudyInterfaceRef sc) {{
 
   // pre
   if (!i_enabled.GetYesNo()) return;
+
+  // compute indicators/lines
+
   if (sc.IsFullRecalculation) return;
 
   sc.SendOrdersToTradeService = i_send_trades.GetYesNo();
+
   s_SCPositionData position;
   sc.GetTradePosition(position);
 
@@ -588,11 +599,20 @@ SCSFExport scsf_{func_name}(SCStudyInterfaceRef sc) {{
     return send_sell_order(size, direction, sc, sg_sell_entry, sg_sell_exit);
   }};
 
+  auto open = sc.Open;
+  auto high = sc.High;
+  auto low = sc.Low;
+  auto close = sc.Close;
+  int idx = sc.Index;
+
   // system
   int size = i_size.GetInt();
-  int internal_order_id = sc.GetPersistentInt(0);
+  bool precondition = sc.GetBarHasClosedStatus() == BHCS_BAR_HAS_CLOSED and
+                      not position.WorkingOrdersExist;
 
-  // TODO: system logic here
+  if (precondition) {{
+      // TODO: add logic here
+  }}
 }}
 """
 
@@ -632,7 +652,5 @@ echo "reload lib"
 echo $RLOAD_DLL_CMD
 echo -n $RLOAD_DLL_CMD > /dev/udp/127.0.0.1/$SC_UDP_PORT
 
-echo "copy study to $PYTHONPATH project"
-cp $name.cpp $PYTHONPATH/ip/sierra-studies/
 echo "done."
 """
