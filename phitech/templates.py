@@ -450,6 +450,22 @@ SCDLLName("{dll_name}");
 const float marker_offset = 0.05;
 
 // helpers
+s_SCNewOrder make_market_order(const int size) {
+  s_SCNewOrder order;
+  order.OrderQuantity = size;
+  order.OrderType = SCT_ORDERTYPE_MARKET;
+  order.TimeInForce = SCT_TIF_DAY;
+  return order;
+}
+
+s_SCNewOrder make_bracket_order(const int size, const float target_offset,
+                                const float stop_offset) {
+  s_SCNewOrder order = make_market_order(size);
+  order.Target1Offset = target_offset;
+  order.Stop1Offset = stop_offset;
+  return order;
+}
+
 void send_buy_order(const int size, const bool direction,
                     SCStudyInterfaceRef& sc, SCSubgraphRef& sg_buy_entry,
                     SCSubgraphRef& sg_buy_exit) {{
