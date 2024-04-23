@@ -619,7 +619,7 @@ SCSFExport scsf_{func_name}(SCStudyInterfaceRef sc) {{
   auto high = sc.High;
   auto low = sc.Low;
   auto close = sc.Close;
-  int idx = sc.Index;
+  int index = sc.Index;
 
   // system
   int size = i_size.GetInt();
