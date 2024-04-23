@@ -625,7 +625,6 @@ SCSFExport scsf_{func_name}(SCStudyInterfaceRef sc) {{
   int size = i_size.GetInt();
   bool precondition = sc.GetBarHasClosedStatus() == BHCS_BAR_HAS_CLOSED and
                       not position.WorkingOrdersExist;
-
   if (precondition) {{
       // TODO: add logic here
   }}
