@@ -572,9 +572,6 @@ SCSFExport scsf_{func_name}(SCStudyInterfaceRef sc) {{
     i_send_trades.Name = "Send Orders to Broker";
     i_send_trades.SetYesNo(1);
 
-    i_sma_period.Name = "SMA Period";
-    i_sma_period.SetInt(10);
-
     // settings
     sc.AutoLoop = 1;
     sc.GraphRegion = 0;
