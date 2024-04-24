@@ -450,29 +450,25 @@ SCDLLName("{dll_name}");
 const float marker_offset = 0.05;
 
 // helpers
-s_SCNewOrder make_market_order(const int size) {
+s_SCNewOrder make_market_order(const int size) {{
   s_SCNewOrder order;
   order.OrderQuantity = size;
   order.OrderType = SCT_ORDERTYPE_MARKET;
   order.TimeInForce = SCT_TIF_DAY;
   return order;
-}
+}}
 
 s_SCNewOrder make_bracket_order(const int size, const float target_offset,
-                                const float stop_offset) {
+                                const float stop_offset) {{
   s_SCNewOrder order = make_market_order(size);
   order.Target1Offset = target_offset;
   order.Stop1Offset = stop_offset;
   return order;
-}
+}}
 
-void send_buy_order(const int size, const bool direction,
-                    SCStudyInterfaceRef& sc, SCSubgraphRef& sg_buy_entry,
-                    SCSubgraphRef& sg_buy_exit) {{
-  s_SCNewOrder order;
-  order.OrderQuantity = size;
-  order.OrderType = SCT_ORDERTYPE_MARKET;
-  order.TimeInForce = SCT_TIF_DAY;
+void send_buy_order(s_SCNewOrder& order, const bool direction,
+                    SCStudyInterfaceRef& sc, SCSubgraphRef& sg_entry,
+                    SCSubgraphRef& sg_exit) {{
   int res = 0;
   int internal_order_id = 0;
   if (direction) {{
@@ -480,7 +476,7 @@ void send_buy_order(const int size, const bool direction,
     sc.AddMessageToLog(sc.GetTradingErrorTextMessage(res), 0);
     if (res > 0) {{
       sc.AddMessageToLog("BUY enter", 0);
-      sg_buy_entry[sc.Index] = sc.Low[sc.Index] - marker_offset;
+      sg_entry[sc.Index] = sc.Low[sc.Index] - marker_offset;
       internal_order_id = order.InternalOrderID;
     }}
   }} else {{
@@ -488,7 +484,7 @@ void send_buy_order(const int size, const bool direction,
     sc.AddMessageToLog(sc.GetTradingErrorTextMessage(res), 0);
     if (res > 0) {{
       sc.AddMessageToLog("BUY exit", 0);
-      sg_buy_exit[sc.Index] = sc.High[sc.Index] + marker_offset;
+      sg_exit[sc.Index] = sc.High[sc.Index] + marker_offset;
       internal_order_id = order.InternalOrderID;
     }}
   }}
@@ -496,13 +492,9 @@ void send_buy_order(const int size, const bool direction,
   sc.AddMessageToLog(std::to_string(internal_order_id).c_str(), 0);
 }}
 
-void send_sell_order(const int size, const bool direction,
-                     SCStudyInterfaceRef& sc, SCSubgraphRef& sg_sell_entry,
-                     SCSubgraphRef& sg_sell_exit) {{
-  s_SCNewOrder order;
-  order.OrderQuantity = size;
-  order.OrderType = SCT_ORDERTYPE_MARKET;
-  order.TimeInForce = SCT_TIF_DAY;
+void send_sell_order(s_SCNewOrder& order, const bool direction,
+                     SCStudyInterfaceRef& sc, SCSubgraphRef& sg_entry,
+                     SCSubgraphRef& sg_exit) {{
   int res = 0;
   int internal_order_id = 0;
   if (direction) {{
@@ -510,7 +502,7 @@ void send_sell_order(const int size, const bool direction,
     sc.AddMessageToLog(sc.GetTradingErrorTextMessage(res), 0);
     if (res > 0) {{
       sc.AddMessageToLog("SELL enter", 0);
-      sg_sell_entry[sc.Index] = sc.High[sc.Index] + marker_offset;
+      sg_entry[sc.Index] = sc.High[sc.Index] + marker_offset;
       internal_order_id = order.InternalOrderID;
     }}
   }} else {{
@@ -518,7 +510,7 @@ void send_sell_order(const int size, const bool direction,
     sc.AddMessageToLog(sc.GetTradingErrorTextMessage(res), 0);
     if (res > 0) {{
       sc.AddMessageToLog("SELL exit", 0);
-      sg_sell_exit[sc.Index] = sc.Low[sc.Index] - marker_offset;
+      sg_exit[sc.Index] = sc.Low[sc.Index] - marker_offset;
       internal_order_id = order.InternalOrderID;
     }}
   }}
@@ -580,6 +572,9 @@ SCSFExport scsf_{func_name}(SCStudyInterfaceRef sc) {{
     i_send_trades.Name = "Send Orders to Broker";
     i_send_trades.SetYesNo(1);
 
+    i_sma_period.Name = "SMA Period";
+    i_sma_period.SetInt(10);
+
     // settings
     sc.AutoLoop = 1;
     sc.GraphRegion = 0;
@@ -608,11 +603,13 @@ SCSFExport scsf_{func_name}(SCStudyInterfaceRef sc) {{
   s_SCPositionData position;
   sc.GetTradePosition(position);
 
-  auto buy = [&sc, &sg_buy_entry, &sg_sell_entry](int size, bool direction) {{
-    return send_buy_order(size, direction, sc, sg_buy_entry, sg_sell_entry);
+  auto buy = [&sc, &sg_buy_entry, &sg_sell_entry](s_SCNewOrder& order,
+                                                  bool direction) {{
+    return send_buy_order(order, direction, sc, sg_buy_entry, sg_sell_entry);
   }};
-  auto sell = [&sc, &sg_sell_entry, &sg_sell_exit](int size, bool direction) {{
-    return send_sell_order(size, direction, sc, sg_sell_entry, sg_sell_exit);
+  auto sell = [&sc, &sg_sell_entry, &sg_sell_exit](s_SCNewOrder& order,
+                                                   bool direction) {{
+    return send_sell_order(order, direction, sc, sg_sell_entry, sg_sell_exit);
   }};
 
   auto open = sc.Open;
@@ -626,7 +623,7 @@ SCSFExport scsf_{func_name}(SCStudyInterfaceRef sc) {{
   bool precondition = sc.GetBarHasClosedStatus() == BHCS_BAR_HAS_CLOSED and
                       not position.WorkingOrdersExist;
   if (precondition) {{
-      // TODO: add logic here
+      // TODO: write your logic here
   }}
 }}
 """
