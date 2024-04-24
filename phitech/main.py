@@ -154,9 +154,6 @@ def study(name=None, replace=False, compile=False):
         with open(f'{base_dir}/{name}.cpp', 'w') as f:
             f.write(script_str)
 
-        logger.info(f"copy study `{name}.cpp` to project -> {os.environ['PYTHONPATH']}")
-        os.system(f"cp {base_dir}/{name}.cpp {os.environ['PYTHONPATH']}/ip/sierra-studies/")
-
     logger.info("make build script")
     build_script_str = sierra_study_build_script_template.format(
         study_name=name,
