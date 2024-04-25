@@ -609,11 +609,14 @@ SCSFExport scsf_{func_name}(SCStudyInterfaceRef sc) {{
     return send_sell_order(order, direction, sc, sg_sell_entry, sg_sell_exit);
   }};
 
+  auto color_green = RGB(0, 255, 0);
+  auto color_red = RGB(255, 0, 0);
+  auto color_blue = RGB(0, 0, 255);
   auto open = sc.Open;
   auto high = sc.High;
   auto low = sc.Low;
   auto close = sc.Close;
-  int index = sc.Index;
+  auto index = sc.Index;
 
   // system
   int size = i_size.GetInt();
