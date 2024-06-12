@@ -1,6 +1,5 @@
 from phitech.logger import logger_lib as logger
 from phitech.const import *
-from phitech.generators.helpers import parse_ticker_string
 from dotted_dict import DottedDict as dotdict
 from ib_insync import IB, util
 from ib_insync.contract import *
@@ -15,6 +14,7 @@ from progiter import ProgIter
 
 
 def get_historical_bars_for_ticker_strings(client, ticker_strings):
+    from phitech.generators.helpers import parse_ticker_string
     instruments = {}
     for ticker_str in ProgIter(ticker_strings):
         ticker, utype, _, exchange, interval, alias, start_date, end_date = parse_ticker_string(ticker_str)
@@ -157,6 +157,16 @@ def get_client(mode="paper_gateway", client_id=2):
     port = (4002 if "paper" in mode else 4001) if "gateway" in mode else (7496 if "live" in mode else 7497)
     client.connect(host="127.0.0.1", port=port, clientId=client_id, readonly=True)
     return client
+
+
+def get_trades(client):
+    raw_trades = client.reqExecutions()
+    trades = []
+    for trade in raw_trades:
+        current = trade.execution.dict()
+        current["ticker"] = trade.contract.symbol
+        trades.append(current)
+    return pd.DataFrame(trades)
 
 
 def get_news(client, contract, start_date=None, end_date=None):

@@ -45,6 +45,11 @@ def run():
     pass
 
 
+@cli.group("export", help="Exporter")
+def export():
+    pass
+
+
 @run.command(help="Run a bot backtest or live.")
 def ide():
     logger.info("check jupyter and python same path")
@@ -282,6 +287,28 @@ def bot(name):
     logger.info("generate bot")
     generate_bot(name)
     logger.info("done.")
+
+
+@export.command(help="View reports for a backktest set")
+@click.option("--account", required=True, help="The name of the bot")
+@click.option("--path", required=True, help="The name of the bot")
+def trades(account, path):
+    import phitech.helpers.ib as ib_helper
+    import pandas as pd
+    import datetime
+
+    client = ib_helper.get_client(mode=f"{account}_workstation", client_id=127123)
+    logger.info(f'client -> {client}')
+    logger.info(f"get trades for account -> `{account}`")
+    logger.info(f'path -> {path}')
+
+    trades = ib_helper.get_trades(client)
+    trades.drop(columns=["execId"])
+    today = datetime.datetime.now().strftime("%Y-%m-%d")
+    trades.to_csv(f"{path}/trades_{today}.csv", index=False)
+
+    logger.info('done.')
+    client.disconnect()
 
 
 def run():

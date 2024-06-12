@@ -1,5 +1,7 @@
 import os
 
+if 'PYTHONPATH' not in os.environ:
+    os.environ['PYTHONPATH'] = os.getcwd()
 
 BASE_DEFINITIONS_PATH = f"{os.environ['PYTHONPATH']}/definitions"
 BASE_STRATEGIES_PATH = f"{os.environ['PYTHONPATH']}/ip/strategies"
