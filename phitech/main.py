@@ -1,8 +1,5 @@
 from phitech.logger import logger_lib as logger
 from phitech.logger import yellow, bold, white, reset, gray, light_gray
-from phitech.banner import BANNER
-from phitech.generators.helpers import filename_to_cls
-from phitech.helpers.instruments import make_ticker_strings, make_instruments_definition
 import click
 
 import os
@@ -19,6 +16,7 @@ def cli():
 
 @cli.command("info")
 def info():
+    from phitech.banner import BANNER
     for line in BANNER.split("\n"):
         logger.info(f" {bold}{white}{line}{reset}")
     logger.info(f"\t    {bold}Phi Technologies.{reset}\n")
@@ -134,6 +132,7 @@ def template(name):
 @click.option("--name", required=True, help="The name of the strategy")
 @click.option("--kind", required=True, help="The kind of the strategy")
 def strategy(name, kind):
+    from phitech.generators.helpers import filename_to_cls
     from phitech import const
     from phitech.templates import (
         blank_strategy_template,
@@ -158,6 +157,7 @@ def strategy(name, kind):
 @click.option("--kind", required=True, help="The kind of the indicator")
 @click.option("--line-name", required=True, help="The line name of the indicator (for use in a strategy)")
 def indicator(name, kind, line_name):
+    from phitech.generators.helpers import filename_to_cls
     from phitech import const
     from phitech.templates import blank_indicator_template
 
@@ -178,6 +178,7 @@ def indicator(name, kind, line_name):
 @make.command(help="Generate a analyzer skeleton")
 @click.option("--name", required=True, help="The name of the analyzer")
 def analyzer(name):
+    from phitech.generators.helpers import filename_to_cls
     from phitech import const
     from phitech.templates import blank_analyzer_template
 
@@ -192,6 +193,7 @@ def analyzer(name):
 @click.option("--name", required=True, help="The name of the observer")
 @click.option("--line-name", required=True, help="The line name of the observer")
 def observer(name, line_name):
+    from phitech.generators.helpers import filename_to_cls
     from phitech import const
     from phitech.templates import blank_observer_template
 
@@ -208,6 +210,7 @@ def observer(name, line_name):
 @click.option("--name", required=True, help="The name of the sizer")
 @click.option("--line-name", required=True, help="The line name of the sizer")
 def sizer(name, line_name):
+    from phitech.generators.helpers import filename_to_cls
     from phitech import const
     from phitech.templates import blank_sizer_template
 
@@ -221,6 +224,7 @@ def sizer(name, line_name):
 @make.command(help="Generate instruments")
 @click.option("--name", required=True, help="The name of the instruments definition")
 def instruments(name):
+    from phitech.helpers.instruments import make_ticker_strings, make_instruments_definition
     tickers = input("tickers [a,b|c,d|...]: ")
     tickers = [t.strip().upper() for t in tickers.split("|")]
     tickers = [[t_.strip() for t_ in t.split(",")] for t in tickers]
