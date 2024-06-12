@@ -305,8 +305,12 @@ def trades(account, path):
     trades = ib_helper.get_trades(client)
     trades.drop(columns=["execId"])
     today = datetime.datetime.now().strftime("%Y-%m-%d")
-    trades.to_csv(f"{path}/trades_{today}.csv", index=False)
 
+    if trades.shape[0] == 0:
+        logger.info("no trades found.")
+        return
+
+    trades.to_csv(f"{path}/trades_{today}.csv", index=False)
     logger.info('done.')
     client.disconnect()
 
