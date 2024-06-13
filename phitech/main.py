@@ -308,13 +308,13 @@ def trades(account, path):
 
     if trades.shape[0] == 0:
         logger.info("no trades found.")
-        os.system("espeak -v en-uk 'no trades found' -p 10")
+        os.system("espeak -v en-uk 'no trades found' -p 0")
         return
 
     trades.to_csv(f"{path}/trades_{today}.csv", index=False)
 
 
-    os.system("espeak -v en-uk 'daily trades updated' -p 10")
+    os.system("espeak -v en-uk 'daily trades updated' -p 0")
     logger.info('done.')
     client.disconnect()
 
