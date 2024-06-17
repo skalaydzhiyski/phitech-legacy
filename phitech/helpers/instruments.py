@@ -13,14 +13,18 @@ def get_ticker_strings_for_instruments(instruments_name, set_idx=None):
     return sets[set_idx].tickers
 
 
-def make_ticker_strings(tickers, underlying_type, live_type, timeframes, aliases, ranges):
+def make_ticker_strings(
+    tickers, underlying_type, live_type, timeframes, aliases, ranges
+):
     logger.info("generate sets")
     ticker_strings = []
     for ts in tickers:
-        current = [f"{t}.{underlying_type}.{live_type}.{tf}" for t, tf in zip(ts, timeframes)]
+        current = [
+            f"{t}.{underlying_type}.{live_type}.{tf}" for t, tf in zip(ts, timeframes)
+        ]
         for l, r in ranges:
-        	current_string = [f"{x}|{l}/{r}|{a}" for x, a in zip(current, aliases)]
-        	ticker_strings.append(current_string)
+            current_string = [f"{x}|{l}/{r}|{a}" for x, a in zip(current, aliases)]
+            ticker_strings.append(current_string)
     return ticker_strings
 
 

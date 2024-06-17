@@ -17,6 +17,7 @@ def cli():
 @cli.command("info")
 def info():
     from phitech.banner import BANNER
+
     for line in BANNER.split("\n"):
         logger.info(f" {bold}{white}{line}{reset}")
     logger.info(f"\t    {bold}Phi Technologies.{reset}\n")
@@ -53,8 +54,12 @@ def export():
 @run.command(help="Run a bot backtest or live.")
 def ide():
     logger.info("check jupyter and python same path")
-    python_path = sp.run(["which", "python"], capture_output=True, text=True).stdout.strip()
-    jupyter_path = sp.run(["which", "python"], capture_output=True, text=True).stdout.strip()
+    python_path = sp.run(
+        ["which", "python"], capture_output=True, text=True
+    ).stdout.strip()
+    jupyter_path = sp.run(
+        ["which", "python"], capture_output=True, text=True
+    ).stdout.strip()
     assert python_path.split("/")[:-1] == jupyter_path.split("/")[:-1]
     logger.info("running jupyter lab")
     os.system("jupyter lab .")
@@ -72,12 +77,16 @@ def report(bot, bt, sid):
     logger.info(f"view report -> bot: {bot}, backtest: {bt}, set: {set}")
 
     kind = conf.bots[bot].kind
-    base_img_path = f"{const.BASE_BOTS_PATH}/{kind}/{bot}/backtest/{bt}/sets/set_{sid}/report/img"
+    base_img_path = (
+        f"{const.BASE_BOTS_PATH}/{kind}/{bot}/backtest/{bt}/sets/set_{sid}/report/img"
+    )
     try:
         os.system(f"open {base_img_path}/*.png")
     except Exception as e:
         logger.errror(e)
-        logger.info("Currently only works on MacOS. TODO: make it work for linux as well")
+        logger.info(
+            "Currently only works on MacOS. TODO: make it work for linux as well"
+        )
 
 
 @rm.command(help="Remove a bot")
@@ -95,7 +104,9 @@ def bot(name):
 
 @run.command(help="Run a bot backtest or live.")
 @click.option("--name", required=True, help="The name of the bot")
-@click.option("--backtest", required=False, help="The comma separated list of backtests to run.")
+@click.option(
+    "--backtest", required=False, help="The comma separated list of backtests to run."
+)
 @click.option("--live", is_flag=True, required=False, help="Run the bot live")
 def bot(name, backtest=None, live=False):
     from phitech import conf
@@ -129,7 +140,9 @@ def template(name):
     rm -rf phitech-templates;
     """
     os.system(script)
-    logger.info("Do not forget to `export PYTHONPATH=$PWD` from within your new project")
+    logger.info(
+        "Do not forget to `export PYTHONPATH=$PWD` from within your new project"
+    )
     logger.info("done.")
 
 
@@ -151,7 +164,9 @@ def strategy(name, kind):
     strategy_path = f"{kind_path}/{name}.py"
     logger.info(f"generate strategy -> `{strategy_path}`")
     with open(strategy_path, "w") as f:
-        strategy_str = blank_strategy_template.format(strategy_name=filename_to_cls(name))
+        strategy_str = blank_strategy_template.format(
+            strategy_name=filename_to_cls(name)
+        )
         f.write(strategy_str)
 
     logger.info("done.")
@@ -160,7 +175,11 @@ def strategy(name, kind):
 @make.command(help="Generate a indicator skeleton")
 @click.option("--name", required=True, help="The name of the indicator")
 @click.option("--kind", required=True, help="The kind of the indicator")
-@click.option("--line-name", required=True, help="The line name of the indicator (for use in a strategy)")
+@click.option(
+    "--line-name",
+    required=True,
+    help="The line name of the indicator (for use in a strategy)",
+)
 def indicator(name, kind, line_name):
     from phitech.generators.helpers import filename_to_cls
     from phitech import const
@@ -175,7 +194,8 @@ def indicator(name, kind, line_name):
     logger.info(f"generate indicator -> `{indicator_path}`")
     with open(indicator_path, "w") as f:
         indicator_str = blank_indicator_template.format(
-            indicator_name=filename_to_cls(name, suffix="Indicator"), indicator_line_name=line_name
+            indicator_name=filename_to_cls(name, suffix="Indicator"),
+            indicator_line_name=line_name,
         )
         f.write(indicator_str)
 
@@ -190,7 +210,9 @@ def analyzer(name):
     analyzer_path = f"{const.BASE_ANALYZERS_PATH}/{name}.py"
     logger.info(f"generate analyzer -> `{analyzer_path}`")
     with open(analyzer_path, "w") as f:
-        analyzer_str = blank_analyzer_template.format(analyzer_name=filename_to_cls(name, suffix="Analyzer"))
+        analyzer_str = blank_analyzer_template.format(
+            analyzer_name=filename_to_cls(name, suffix="Analyzer")
+        )
         f.write(analyzer_str)
 
 
@@ -206,7 +228,8 @@ def observer(name, line_name):
     logger.info(f"generate observer -> `{observer_path}`")
     with open(observer_path, "w") as f:
         observer_str = blank_observer_template.format(
-            observer_name=filename_to_cls(name, suffix="Observer"), observer_line_name=line_name
+            observer_name=filename_to_cls(name, suffix="Observer"),
+            observer_line_name=line_name,
         )
         f.write(observer_str)
 
@@ -222,27 +245,33 @@ def sizer(name, line_name):
     sizer_path = f"{const.BASE_SIZERS_PATH}/{name}.py"
     logger.info(f"generate sizer -> `{sizer_path}`")
     with open(sizer_path, "w") as f:
-        sizer_str = blank_sizer_template.format(sizer_name=filename_to_cls(name, suffix="Sizer"))
+        sizer_str = blank_sizer_template.format(
+            sizer_name=filename_to_cls(name, suffix="Sizer")
+        )
         f.write(sizer_str)
 
 
 @make.command(help="Generate instruments")
 @click.option("--name", required=True, help="The name of the instruments definition")
 def instruments(name):
-    from phitech.helpers.instruments import make_ticker_strings, make_instruments_definition
+    from phitech.helpers.instruments import (
+        make_ticker_strings,
+        make_instruments_definition,
+    )
+
     tickers = input("tickers [a,b|c,d|...]: ")
     tickers = [t.strip().upper() for t in tickers.split("|")]
     tickers = [[t_.strip() for t_ in t.split(",")] for t in tickers]
     aliases = [t.strip().lower() for t in tickers[0]]
 
     timeframes = input("timeframes [a,b,..]: ")
-    timeframes = [tf.strip() for tf in timeframes.split(',')]
+    timeframes = [tf.strip() for tf in timeframes.split(",")]
     if len(timeframes) == 1:
         timeframes *= len(tickers[0])
 
     aliases = input("aliases [a,b,..]: ")
     if len(aliases.strip()) != 0:
-        aliases = [a.strip() for a in aliases.split(',')]
+        aliases = [a.strip() for a in aliases.split(",")]
     else:
         aliases = [t.lower() for t in tickers[0]]
 
@@ -250,7 +279,7 @@ def instruments(name):
     live_type = input("live type: ").strip().upper()
 
     ranges = input("ranges [l/r|..]: ")
-    ranges = [r.strip().split('/') for r in ranges.split("|")]
+    ranges = [r.strip().split("/") for r in ranges.split("|")]
 
     ticker_strings = make_ticker_strings(
         tickers, underlying_type, live_type, timeframes, aliases, ranges
@@ -263,7 +292,10 @@ def instruments(name):
 @click.option("--kind", required=True, help="Kind of notebook (explore/strategy)")
 @click.option("--instruments", required=False, help="Instruments to load")
 def notebook(name, kind, instruments):
-    from phitech.generators.notebook import generate_exploration_notebook, generate_strategy_notebook
+    from phitech.generators.notebook import (
+        generate_exploration_notebook,
+        generate_strategy_notebook,
+    )
 
     if kind == "explore":
         logger.info(f"generate exploration notebook -> `{name}`")
@@ -298,24 +330,22 @@ def trades(account, path):
     import datetime
 
     client = ib_helper.get_client(mode=f"{account}_workstation", client_id=127123)
-    logger.info(f'client -> {client}')
+    logger.info(f"client -> {client}")
     logger.info(f"get trades for account -> `{account}`")
-    logger.info(f'path -> {path}')
+    logger.info(f"path -> {path}")
 
     trades = ib_helper.get_trades(client)
-    trades.drop(columns=["execId"])
-    today = datetime.datetime.now().strftime("%Y-%m-%d")
-
     if trades.shape[0] == 0:
         logger.info("no trades found.")
         os.system("espeak -v en-uk 'no trades found' -p 10")
         return
 
+    trades.drop(columns=["execId"])
+    today = datetime.datetime.now().strftime("%Y-%m-%d")
     trades.to_csv(f"{path}/trades_{today}.csv", index=False)
 
-
     os.system("espeak -v en-uk 'daily trades updated' -p 10")
-    logger.info('done.')
+    logger.info("done.")
     client.disconnect()
 
 

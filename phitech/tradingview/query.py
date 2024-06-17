@@ -9,7 +9,16 @@ from phitech.tradingview.scanner import get_scanner_data, COLUMNS
 
 class FilterOperationDict(TypedDict):
     left: str
-    operation: Literal["greater", "egreater", "less", "eless", "equal", "nequal", "in_range", "not_in_range"]
+    operation: Literal[
+        "greater",
+        "egreater",
+        "less",
+        "eless",
+        "equal",
+        "nequal",
+        "in_range",
+        "not_in_range",
+    ]
     right: Any
 
 
@@ -86,13 +95,19 @@ class Column:
         return FilterOperationDict(left=self.name, operation="nequal", right=other)
 
     def between(self, left, right) -> FilterOperationDict:
-        return FilterOperationDict(left=self.name, operation="in_range", right=[left, right])
+        return FilterOperationDict(
+            left=self.name, operation="in_range", right=[left, right]
+        )
 
     def not_between(self, left, right) -> FilterOperationDict:
-        return FilterOperationDict(left=self.name, operation="not_in_range", right=[left, right])
+        return FilterOperationDict(
+            left=self.name, operation="not_in_range", right=[left, right]
+        )
 
     def isin(self, values) -> FilterOperationDict:
-        return FilterOperationDict(left=self.name, operation="in_range", right=list(values))
+        return FilterOperationDict(
+            left=self.name, operation="in_range", right=list(values)
+        )
 
 
 class Query:
@@ -114,7 +129,9 @@ class Query:
         }
 
     def select(self, *columns: Column | str) -> Query:
-        self.query["columns"] = [col.name if isinstance(col, Column) else Column(col).name for col in columns]
+        self.query["columns"] = [
+            col.name if isinstance(col, Column) else Column(col).name for col in columns
+        ]
         return self
 
     def where(self, *expressions: FilterOperationDict) -> Query:

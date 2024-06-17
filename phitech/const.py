@@ -1,7 +1,7 @@
 import os
 
-if 'PYTHONPATH' not in os.environ:
-    os.environ['PYTHONPATH'] = os.getcwd()
+if "PYTHONPATH" not in os.environ:
+    os.environ["PYTHONPATH"] = os.getcwd()
 
 BASE_DEFINITIONS_PATH = f"{os.environ['PYTHONPATH']}/definitions"
 BASE_STRATEGIES_PATH = f"{os.environ['PYTHONPATH']}/ip/strategies"
@@ -19,7 +19,11 @@ TAB = "\t"
 NOTEBOOK_BASE = {
     "cells": [],
     "metadata": {
-        "kernelspec": {"display_name": "Python 3 (ipykernel)", "language": "python", "name": "python3"},
+        "kernelspec": {
+            "display_name": "Python 3 (ipykernel)",
+            "language": "python",
+            "name": "python3",
+        },
         "language_info": {
             "codemirror_mode": {"name": "ipython", "version": 3},
             "file_extension": ".py",

@@ -61,10 +61,17 @@ def run_single_strategy_bt(
 
     res = engine.run()
 
-    report, perf, daily_returns, position_rets = make_perf_report_single_strategy(res[0])
+    report, perf, daily_returns, position_rets = make_perf_report_single_strategy(
+        res[0]
+    )
     report["strategy_name"] = name
     perf["strategy"] = name
-    return {'strat': res[0], 'report': report, 'perf': perf, 'position_rets': position_rets}
+    return {
+        "strat": res[0],
+        "report": report,
+        "perf": perf,
+        "position_rets": position_rets,
+    }
 
 
 def plot_perf(perf, intraday=False):
@@ -76,7 +83,7 @@ def plot_perf(perf, intraday=False):
 
 
 def make_perf_report_single_strategy(strat, name=""):
-    position_rets = strat.analyzers.getbyname('position_returns').get_analysis()
+    position_rets = strat.analyzers.getbyname("position_returns").get_analysis()
 
     time_account_value = pd.DataFrame(
         strat.analyzers.getbyname("time_account_value").get_analysis()["account_value"],
@@ -85,12 +92,14 @@ def make_perf_report_single_strategy(strat, name=""):
     time_account_value.index = pd.to_datetime(time_account_value.index)
 
     time_returns = pd.DataFrame(
-        strat.analyzers.getbyname("time_return").get_analysis().items(), columns=["dt", "returns"]
+        strat.analyzers.getbyname("time_return").get_analysis().items(),
+        columns=["dt", "returns"],
     ).set_index("dt")
     time_returns.index = pd.to_datetime(time_returns.index)
 
     time_drawdown = pd.DataFrame(
-        strat.analyzers.getbyname("time_drawdown").get_analysis()["drawdown"], columns=["dt", "drawdown"]
+        strat.analyzers.getbyname("time_drawdown").get_analysis()["drawdown"],
+        columns=["dt", "drawdown"],
     ).set_index("dt")
     time_drawdown.index = pd.to_datetime(time_drawdown.index)
 
@@ -99,17 +108,37 @@ def make_perf_report_single_strategy(strat, name=""):
     max_drawdown = time_drawdown.drawdown.min()
 
     # I know...
-    trade_analyzer_stats = strat.analyzers.getbyname("stat_trade_analyzer").get_analysis()
+    trade_analyzer_stats = strat.analyzers.getbyname(
+        "stat_trade_analyzer"
+    ).get_analysis()
     trades_found = trade_analyzer_stats["total"]["total"] != 0
-    total_closed_trades = None if not trades_found else trade_analyzer_stats["total"]["closed"]
-    streak_won_longest = None if not trades_found else trade_analyzer_stats["streak"]["won"]["longest"]
-    streak_lost_longest = None if not trades_found else trade_analyzer_stats["streak"]["lost"]["longest"]
-    total_time_in_market = None if not trades_found else trade_analyzer_stats["len"]["total"]
-    max_time_in_market = None if not trades_found else trade_analyzer_stats["len"]["max"]
-    min_time_in_market = None if not trades_found else trade_analyzer_stats["len"]["min"]
-    avg_time_in_market = None if not trades_found else trade_analyzer_stats["len"]["average"]
-    avg_time_in_market_won = None if not trades_found else trade_analyzer_stats["len"]["won"]["average"]
-    avg_time_in_market_lost = None if not trades_found else trade_analyzer_stats["len"]["lost"]["average"]
+    total_closed_trades = (
+        None if not trades_found else trade_analyzer_stats["total"]["closed"]
+    )
+    streak_won_longest = (
+        None if not trades_found else trade_analyzer_stats["streak"]["won"]["longest"]
+    )
+    streak_lost_longest = (
+        None if not trades_found else trade_analyzer_stats["streak"]["lost"]["longest"]
+    )
+    total_time_in_market = (
+        None if not trades_found else trade_analyzer_stats["len"]["total"]
+    )
+    max_time_in_market = (
+        None if not trades_found else trade_analyzer_stats["len"]["max"]
+    )
+    min_time_in_market = (
+        None if not trades_found else trade_analyzer_stats["len"]["min"]
+    )
+    avg_time_in_market = (
+        None if not trades_found else trade_analyzer_stats["len"]["average"]
+    )
+    avg_time_in_market_won = (
+        None if not trades_found else trade_analyzer_stats["len"]["won"]["average"]
+    )
+    avg_time_in_market_lost = (
+        None if not trades_found else trade_analyzer_stats["len"]["lost"]["average"]
+    )
 
     report = pd.DataFrame(
         [
