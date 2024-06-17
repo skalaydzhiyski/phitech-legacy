@@ -20,7 +20,7 @@ def info():
 
     for line in BANNER.split("\n"):
         logger.info(f" {bold}{white}{line}{reset}")
-    logger.info(f"\t    {bold}Phi Technologies.{reset}\n")
+    logger.info(f"\t       {bold}Phi Technologies.{reset}\n")
     logger.info(f"{yellow}A collection of CLI tools and libraries{reset}")
     logger.info(f"{yellow}to assist the development and deployment{reset}")
     logger.info(f"{yellow}of trading strategies.\n{reset}")
@@ -129,6 +129,68 @@ def bot(name, backtest=None, live=False):
         logger.info("done.")
 
 
+@make.command(help="Generate a SierraChart study")
+@click.option("--name", required=False, help="The name of the SierraChart study")
+@click.option("--replace", is_flag=True, help="Whether to replace the .cpp file for the study or not.")
+@click.option("--compile", is_flag=True, help="When the study is built, you can compile the study and it will end up in SierraChart")
+def study(name=None, replace=False, compile=False):
+    from phitech.templates import sierra_study_build_script_template, sierra_study_compile_commands_template, sierra_study_base_script_template
+
+    if compile:
+        logger.info("make study DLL")
+        logger.info("run build study dll script..")
+        res = os.system("bash ./run_build_study_dll.sh")
+        if res == 0:
+            logger.info("study deployed successfuly!")
+        else:
+            logger.error("something went wrong when building the study")
+        logger.info("done.")
+        return
+
+    if not name:
+        logger.error("No study name!")
+        return
+
+    logger.info(f"study_name -> {name}")
+    sierra_chart_base_dir = "/home/darchitect/wine-bottles/sierra-chart/drive_c/SierraChart"
+
+    logger.info("make base dir")
+    base_dir = f'.'
+    study_exists = os.path.exists(f'{base_dir}/{name}.cpp')
+    if not study_exists or (study_exists and replace):
+        logger.info("replace specified -> delete old study")
+        os.system(f"rm -rf {base_dir}/{name}.cpp")
+        logger.info("make .cpp file")
+        parts = [w.capitalize() for w in name.split("_")]
+        dll_name = func_name = "_".join(parts)
+        script_str = sierra_study_base_script_template.format(
+            dll_name=dll_name,
+            func_name=func_name,
+        ).strip()
+        with open(f'{base_dir}/{name}.cpp', 'w') as f:
+            f.write(script_str)
+
+    logger.info("make build script")
+    build_script_str = sierra_study_build_script_template.format(
+        study_name=name,
+        sierra_chart_base_dir=sierra_chart_base_dir,
+    ).strip()
+    build_script_path = f'{base_dir}/run_build_study_dll.sh'
+    with open(build_script_path, 'w') as f:
+        f.write(build_script_str)
+    os.system(f'chmod +x {build_script_path}')
+
+    logger.info("make compile commands script")
+    compile_commands_str = sierra_study_compile_commands_template.format(
+        study_name=name,
+        sierra_chart_base_dir=sierra_chart_base_dir,
+    ).strip()
+    with open(f'{base_dir}/compile_commands.json', 'w') as f:
+        f.write(compile_commands_str)
+
+    logger.info("done.")
+
+
 @make.command(help="Generate a template from `phitech-templates`")
 @click.option("--name", required=True, help="The name of the template")
 def template(name):
@@ -155,6 +217,7 @@ def strategy(name, kind):
     from phitech.templates import (
         blank_strategy_template,
     )
+    from phitech.generators.helpers import filename_to_cls
 
     kind_path = f"{const.BASE_STRATEGIES_PATH}/{kind}"
     if not os.path.exists(kind_path):
@@ -184,6 +247,7 @@ def indicator(name, kind, line_name):
     from phitech.generators.helpers import filename_to_cls
     from phitech import const
     from phitech.templates import blank_indicator_template
+    from phitech.generators.helpers import filename_to_cls
 
     kind_path = f"{const.BASE_INDICATORS_PATH}/{kind}"
     if not os.path.exists(kind_path):
@@ -206,6 +270,7 @@ def analyzer(name):
     from phitech.generators.helpers import filename_to_cls
     from phitech import const
     from phitech.templates import blank_analyzer_template
+    from phitech.generators.helpers import filename_to_cls
 
     analyzer_path = f"{const.BASE_ANALYZERS_PATH}/{name}.py"
     logger.info(f"generate analyzer -> `{analyzer_path}`")
@@ -223,6 +288,7 @@ def observer(name, line_name):
     from phitech.generators.helpers import filename_to_cls
     from phitech import const
     from phitech.templates import blank_observer_template
+    from phitech.generators.helpers import filename_to_cls
 
     observer_path = f"{const.BASE_OBSERVERS_PATH}/{name}.py"
     logger.info(f"generate observer -> `{observer_path}`")
@@ -241,6 +307,7 @@ def sizer(name, line_name):
     from phitech.generators.helpers import filename_to_cls
     from phitech import const
     from phitech.templates import blank_sizer_template
+    from phitech.generators.helpers import filename_to_cls
 
     sizer_path = f"{const.BASE_SIZERS_PATH}/{name}.py"
     logger.info(f"generate sizer -> `{sizer_path}`")

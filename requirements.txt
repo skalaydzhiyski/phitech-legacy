@@ -1,0 +1,13 @@
+pyyaml
+dotted-dict
+backtrader
+# use this fork to install backtrader IB store -> https://github.com/skalaydzhiyski/phitech-backtrader-fork
+# use this fork to install tradingview api -> https://github.com/stefanomorni/fork-tvdatafeed
+click
+jupyterlab
+loguru
+ipympl
+pyfolio
+humanize
+ib_insync
+progiter

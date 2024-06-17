@@ -11,6 +11,7 @@ BASE_ANALYZERS_PATH = f"{os.environ['PYTHONPATH']}/ip/analyzers"
 BASE_OBSERVERS_PATH = f"{os.environ['PYTHONPATH']}/ip/observers"
 BASE_SIZERS_PATH = f"{os.environ['PYTHONPATH']}/ip/sizers"
 BASE_NOTEBOOKS_PATH = f"{os.environ['PYTHONPATH']}/notebooks"
+BASE_SIERRA_STUDIES_PATH = f"{os.environ['PYTHONPATH']}/ip/sierra-studies"
 
 BASE_BOTS_PATH = f"{os.environ['PYTHONPATH']}/bots"
 

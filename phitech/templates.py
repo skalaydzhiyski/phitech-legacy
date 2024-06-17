@@ -401,7 +401,7 @@ ticker_strings
 notebook_scanner = """
 tickers = tview_helper.get_scanner_data(
     Query()
-        .select('name', 'exchange')\
+        .select('name', 'exchange')
         .where(
             Column('exchange').isin(['NASDAQ', 'NYSE']),
         )
@@ -437,4 +437,232 @@ btest['report']
 
 notebook_single_backtest_perf = """
 bt_helper.plot_perf(btest['perf'])
+"""
+
+sierra_study_base_script_template = """
+#include <string>
+
+#include "sierrachart.h"
+
+SCDLLName("{dll_name}");
+
+// global
+const float marker_offset = 0.05;
+
+// helpers
+s_SCNewOrder make_market_order(const int size) {{
+  s_SCNewOrder order;
+  order.OrderQuantity = size;
+  order.OrderType = SCT_ORDERTYPE_MARKET;
+  order.TimeInForce = SCT_TIF_DAY;
+  return order;
+}}
+
+s_SCNewOrder make_bracket_order(const int size, const float target_offset,
+                                const float stop_offset) {{
+  s_SCNewOrder order = make_market_order(size);
+  order.Target1Offset = target_offset;
+  order.Stop1Offset = stop_offset;
+  return order;
+}}
+
+void send_buy_order(s_SCNewOrder& order, const bool direction,
+                    SCStudyInterfaceRef& sc, SCSubgraphRef& sg_entry,
+                    SCSubgraphRef& sg_exit) {{
+  int res = 0;
+  int internal_order_id = 0;
+  if (direction) {{
+    res = static_cast<int>(sc.BuyEntry(order));
+    sc.AddMessageToLog(sc.GetTradingErrorTextMessage(res), 0);
+    if (res > 0) {{
+      sc.AddMessageToLog("BUY enter", 0);
+      sg_entry[sc.Index] = sc.Low[sc.Index] - marker_offset;
+      internal_order_id = order.InternalOrderID;
+    }}
+  }} else {{
+    res = static_cast<int>(sc.BuyExit(order));
+    sc.AddMessageToLog(sc.GetTradingErrorTextMessage(res), 0);
+    if (res > 0) {{
+      sc.AddMessageToLog("BUY exit", 0);
+      sg_exit[sc.Index] = sc.High[sc.Index] + marker_offset;
+      internal_order_id = order.InternalOrderID;
+    }}
+  }}
+  sc.AddMessageToLog("internal order id", 0);
+  sc.AddMessageToLog(std::to_string(internal_order_id).c_str(), 0);
+}}
+
+void send_sell_order(s_SCNewOrder& order, const bool direction,
+                     SCStudyInterfaceRef& sc, SCSubgraphRef& sg_entry,
+                     SCSubgraphRef& sg_exit) {{
+  int res = 0;
+  int internal_order_id = 0;
+  if (direction) {{
+    res = static_cast<int>(sc.SellEntry(order));
+    sc.AddMessageToLog(sc.GetTradingErrorTextMessage(res), 0);
+    if (res > 0) {{
+      sc.AddMessageToLog("SELL enter", 0);
+      sg_entry[sc.Index] = sc.High[sc.Index] + marker_offset;
+      internal_order_id = order.InternalOrderID;
+    }}
+  }} else {{
+    res = static_cast<int>(sc.SellExit(order));
+    sc.AddMessageToLog(sc.GetTradingErrorTextMessage(res), 0);
+    if (res > 0) {{
+      sc.AddMessageToLog("SELL exit", 0);
+      sg_exit[sc.Index] = sc.Low[sc.Index] - marker_offset;
+      internal_order_id = order.InternalOrderID;
+    }}
+  }}
+  sc.AddMessageToLog("internal order id", 0);
+  sc.AddMessageToLog(std::to_string(internal_order_id).c_str(), 0);
+}}
+
+SCSFExport scsf_{func_name}(SCStudyInterfaceRef sc) {{
+  // markers
+  SCSubgraphRef sg_buy_entry = sc.Subgraph[0];
+  SCSubgraphRef sg_buy_exit = sc.Subgraph[1];
+  SCSubgraphRef sg_sell_entry = sc.Subgraph[2];
+  SCSubgraphRef sg_sell_exit = sc.Subgraph[3];
+
+  // extra subgraphs
+
+  // inputs
+  SCInputRef i_enabled = sc.Input[0];
+  SCInputRef i_size = sc.Input[2];
+  SCInputRef i_send_trades = sc.Input[3];
+
+  if (sc.SetDefaults) {{
+    sc.GraphName = "{func_name}";
+
+    // markers
+    sg_buy_entry.Name = "Buy Entry";
+    sg_buy_entry.DrawStyle = DRAWSTYLE_ARROW_UP;
+    sg_buy_entry.PrimaryColor = RGB(0, 145, 0);
+    sg_buy_entry.LineWidth = 2;
+    sg_buy_entry.DrawZeros = false;
+
+    sg_buy_exit.Name = "Buy Exit";
+    sg_buy_exit.DrawStyle = DRAWSTYLE_ARROW_DOWN;
+    sg_buy_exit.PrimaryColor = RGB(145, 0, 0);
+    sg_buy_exit.LineWidth = 2;
+    sg_buy_exit.DrawZeros = false;
+
+    sg_sell_entry.Name = "Sell Entry";
+    sg_sell_entry.DrawStyle = DRAWSTYLE_ARROW_DOWN;
+    sg_sell_entry.PrimaryColor = RGB(145, 0, 0);
+    sg_sell_entry.LineWidth = 2;
+    sg_sell_entry.DrawZeros = false;
+
+    sg_sell_exit.Name = "Sell Exit";
+    sg_sell_exit.DrawStyle = DRAWSTYLE_ARROW_UP;
+    sg_sell_exit.PrimaryColor = RGB(0, 145, 0);
+    sg_sell_exit.LineWidth = 2;
+    sg_sell_exit.DrawZeros = false;
+
+    // subgraphs
+
+    // inputs
+    i_enabled.Name = "Enabled";
+    i_enabled.SetYesNo(0);
+
+    i_size.Name = "Size";
+    i_size.SetInt(10);
+
+    i_send_trades.Name = "Send Orders to Broker";
+    i_send_trades.SetYesNo(1);
+
+    // settings
+    sc.AutoLoop = 1;
+    sc.GraphRegion = 0;
+    sc.AllowMultipleEntriesInSameDirection = false;
+    sc.MaximumPositionAllowed = 100;
+    sc.SupportReversals = false;
+    sc.AllowOppositeEntryWithOpposingPositionOrOrders = false;
+    sc.SupportAttachedOrdersForTrading = false;
+    sc.CancelAllOrdersOnEntriesAndReversals = true;
+    sc.AllowEntryWithWorkingOrders = false;
+    sc.CancelAllWorkingOrdersOnExit = false;
+    sc.AllowOnlyOneTradePerBar = true;
+    sc.MaintainTradeStatisticsAndTradesData = true;
+    return;
+  }}
+
+  // pre
+  if (!i_enabled.GetYesNo()) return;
+
+  // compute indicators/lines
+
+  if (sc.IsFullRecalculation) return;
+
+  sc.SendOrdersToTradeService = i_send_trades.GetYesNo();
+
+  s_SCPositionData position;
+  sc.GetTradePosition(position);
+
+  auto buy = [&sc, &sg_buy_entry, &sg_sell_entry](s_SCNewOrder& order,
+                                                  bool direction) {{
+    return send_buy_order(order, direction, sc, sg_buy_entry, sg_sell_entry);
+  }};
+  auto sell = [&sc, &sg_sell_entry, &sg_sell_exit](s_SCNewOrder& order,
+                                                   bool direction) {{
+    return send_sell_order(order, direction, sc, sg_sell_entry, sg_sell_exit);
+  }};
+
+  auto color_green = RGB(0, 255, 0);
+  auto color_red = RGB(255, 0, 0);
+  auto color_blue = RGB(0, 0, 255);
+  auto open = sc.Open;
+  auto high = sc.High;
+  auto low = sc.Low;
+  auto close = sc.Close;
+  auto index = sc.Index;
+
+  // system
+  int size = i_size.GetInt();
+  bool precondition = sc.GetBarHasClosedStatus() == BHCS_BAR_HAS_CLOSED and
+                      not position.WorkingOrdersExist;
+  if (precondition) {{
+      // TODO: write your logic here
+  }}
+}}
+"""
+
+sierra_study_compile_commands_template = """
+[
+  {{
+    "directory": "{sierra_chart_base_dir}",
+    "command": "/usr/bin/x86_64-w64-mingw32-g++ -I /usr/include/c++/11 -I /usr/include/x86_64-linux-gnu/c++/11 -I {sierra_chart_base_dir} -w -s -O2 -m64 -march=native -static -shared {study_name}.cpp -o simple_study_64.dll",
+    "file": "{study_name}.cpp"
+  }}
+]
+"""
+
+sierra_study_build_script_template = """
+#!/bin/bash
+name="{study_name}"
+base_sierra_dir="{sierra_chart_base_dir}"
+
+echo "compile shared library"
+/usr/bin/x86_64-w64-mingw32-g++ -Wall -I $base_sierra_dir/ACS_Source -w -s -O2 -m64 -march=native -static -shared $name.cpp -o $name.dll
+
+SC_UDP_PORT=8898
+WIN_FP=C:\\\\SierraChart\\Data\\\\$name.dll
+RLEASE_DLL_CMD=RELEASE_DLL--$WIN_FP
+RLOAD_DLL_CMD=ALLOW_LOAD_DLL--$WIN_FP
+
+echo "deploy to sierra"
+echo "release lib"
+echo $RLEASE_DLL_CMD
+echo -n $RLEASE_DLL_CMD > /dev/udp/127.0.0.1/$SC_UDP_PORT
+sleep 2
+
+echo "copy .dll file to Data/"
+mv $name.dll $base_sierra_dir/Data/
+
+echo "reload lib"
+echo $RLOAD_DLL_CMD
+echo -n $RLOAD_DLL_CMD > /dev/udp/127.0.0.1/$SC_UDP_PORT
+
+echo "done."
 """
