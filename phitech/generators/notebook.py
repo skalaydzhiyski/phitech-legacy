@@ -54,7 +54,9 @@ def generate_strategy_notebook(name, instr_name, strategy_kind):
     ]
     notebook["cells"] = cells
 
-    notebook_path = f"{const.BASE_NOTEBOOKS_PATH}/strategies/{strategy_kind}/{name}.ipynb"
+    notebook_path = (
+        f"{const.BASE_NOTEBOOKS_PATH}/strategies/{strategy_kind}/{name}.ipynb"
+    )
     if os.path.exists(notebook_path):
         y = input("notebook exists, replace? (y/N): ")
         if y.lower() != "y":
@@ -79,7 +81,9 @@ def generate_exploration_notebook(name, instr_name):
         ),
         make_cell(templates.notebook_instruments),
         make_cell("### Strategy", kind="markdown"),
-        make_cell(templates.blank_strategy_template.format(strategy_name="SimpleStrategy")),
+        make_cell(
+            templates.blank_strategy_template.format(strategy_name="SimpleStrategy")
+        ),
         make_cell("### Run", kind="markdown"),
         make_cell(
             templates.notebook_single_backtest_runner.format(
@@ -105,4 +109,6 @@ def generate_exploration_notebook(name, instr_name):
 
 def text_to_cell_list(input_text):
     lines = input_text.strip().split("\n")
-    return [f"{line}\n" if idx != len(lines) - 1 else line for idx, line in enumerate(lines)]
+    return [
+        f"{line}\n" if idx != len(lines) - 1 else line for idx, line in enumerate(lines)
+    ]

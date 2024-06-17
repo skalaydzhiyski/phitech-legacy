@@ -1,6 +1,5 @@
 from phitech.logger import logger_lib as logger
 from phitech.const import *
-from phitech.generators.helpers import parse_ticker_string
 from dotted_dict import DottedDict as dotdict
 from ib_insync import IB, util
 from ib_insync.contract import *
@@ -15,18 +14,28 @@ from progiter import ProgIter
 
 
 def get_historical_bars_for_ticker_strings(client, ticker_strings):
+    from phitech.generators.helpers import parse_ticker_string
+
     instruments = {}
     for ticker_str in ProgIter(ticker_strings):
-        ticker, utype, _, exchange, interval, alias, start_date, end_date = parse_ticker_string(ticker_str)
-        contract = Contract(secType=utype, symbol=ticker, exchange=exchange, currency="USD")
+        ticker, utype, _, exchange, interval, alias, start_date, end_date = (
+            parse_ticker_string(ticker_str)
+        )
+        contract = Contract(
+            secType=utype, symbol=ticker, exchange=exchange, currency="USD"
+        )
         client.qualifyContracts(contract)
         try:
             current = get_historical_bars(
-                client, contract, start_date=start_date, end_date=end_date, interval=interval
+                client,
+                contract,
+                start_date=start_date,
+                end_date=end_date,
+                interval=interval,
             )
             instruments[alias] = current
         except Exception as e:
-            logger.info(f'exception encountered while pulling data for {ticker} -> {e}')
+            logger.info(f"exception encountered while pulling data for {ticker} -> {e}")
             return None
     return instruments
 
@@ -67,7 +76,9 @@ valid_intervals = {
 
 def get_historical_bars(client, contract, start_date, end_date, interval):
     logger.info(f"getting historical bars for -> {contract.symbol}")
-    sd, ed = datetime.datetime.fromisoformat(start_date), datetime.datetime.fromisoformat(end_date)
+    sd, ed = datetime.datetime.fromisoformat(
+        start_date
+    ), datetime.datetime.fromisoformat(end_date)
 
     safe_intervals = ["hour", "day", "week", "month"]
     for si in safe_intervals:
@@ -78,7 +89,9 @@ def get_historical_bars(client, contract, start_date, end_date, interval):
             else:
                 duration = f"{diff_days} D"
 
-            res = get_historical_bars_default(client, contract, end_date, duration, interval)
+            res = get_historical_bars_default(
+                client, contract, end_date, duration, interval
+            )
             if " " in str(res.index.dtype):
                 res.index = res.index.tz_convert(None)
             res = res[res.index >= sd]
@@ -102,10 +115,16 @@ def get_historical_bars(client, contract, start_date, end_date, interval):
         res = pd.DataFrame()
         for _ in ProgIter(range(n_requests)):
             current = get_historical_bars_default(
-                client, contract, ed.strftime("%Y-%m-%d"), f"{max_lookback_days} D", interval
+                client,
+                contract,
+                ed.strftime("%Y-%m-%d"),
+                f"{max_lookback_days} D",
+                interval,
             )
             if current is None:
-                raise Exception("IB returns None, probably data is too old for interval")
+                raise Exception(
+                    "IB returns None, probably data is too old for interval"
+                )
             ed = current.index.min()
             res = pd.concat([current, res])
 
@@ -138,7 +157,9 @@ def get_historical_bars_default(client, contract, end_date, duration, interval):
     return res
 
 
-def get_historical_ticks(client, contract, start_date, end_date, what_to_show="TRADES", number_of_ticks=1000):
+def get_historical_ticks(
+    client, contract, start_date, end_date, what_to_show="TRADES", number_of_ticks=1000
+):
     res = client.reqHistoricalTicks(
         contract=contract,
         startDateTime=make_date(start_date),
@@ -154,9 +175,23 @@ def get_historical_ticks(client, contract, start_date, end_date, what_to_show="T
 def get_client(mode="paper_gateway", client_id=2):
     util.startLoop()
     client = IB()
-    port = (4002 if "paper" in mode else 4001) if "gateway" in mode else (7496 if "live" in mode else 7497)
+    port = (
+        (4002 if "paper" in mode else 4001)
+        if "gateway" in mode
+        else (7496 if "live" in mode else 7497)
+    )
     client.connect(host="127.0.0.1", port=port, clientId=client_id, readonly=True)
     return client
+
+
+def get_trades(client):
+    raw_trades = client.reqExecutions()
+    trades = []
+    for trade in raw_trades:
+        current = trade.execution.dict()
+        current["ticker"] = trade.contract.symbol
+        trades.append(current)
+    return pd.DataFrame(trades)
 
 
 def get_news(client, contract, start_date=None, end_date=None):
@@ -173,6 +208,8 @@ def get_news(client, contract, start_date=None, end_date=None):
         endDateTime=end_date,
         totalResults=100,
     )
-    res = [(article.time, re.sub(r"{.*?}", "", article.headline)[1:]) for article in news]
+    res = [
+        (article.time, re.sub(r"{.*?}", "", article.headline)[1:]) for article in news
+    ]
     res = pd.DataFrame(res, columns=["time", "title"])
     return res

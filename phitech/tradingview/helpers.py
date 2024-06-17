@@ -13,7 +13,9 @@ import numpy as np
 @retry(wait=wait_fixed(4))
 def _check_ib_tradable(ticker, exchange, client):
     res = client.reqMatchingSymbols(ticker)
-    res = [r for r in res if r.contract.symbol == ticker and r.contract.secType == "STK"]
+    res = [
+        r for r in res if r.contract.symbol == ticker and r.contract.secType == "STK"
+    ]
     if len(res) > 1:
         exchanges = [exchange, "ARCA"] if exchange == "NYSE" else [exchange]
         res = [r for r in res if r.contract.primaryExchange in exchanges]
@@ -43,8 +45,12 @@ def _query_universe():
     logger.info("get all tickers from -> `NYSE, AMEX, NASDAQ`")
     query = Query().select(*const.UNIVERSE_COLUMNS)
     universe = query.get_scanner_data()[1]
-    universe = universe.rename(columns={"name": "ticker", "market_cap_basic": "market_cap"})
-    universe["market_cap"] = universe.market_cap.apply(lambda x: 0 if np.isnan(x) else int(x))
+    universe = universe.rename(
+        columns={"name": "ticker", "market_cap_basic": "market_cap"}
+    )
+    universe["market_cap"] = universe.market_cap.apply(
+        lambda x: 0 if np.isnan(x) else int(x)
+    )
     return universe
 
 

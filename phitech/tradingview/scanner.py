@@ -553,7 +553,11 @@ API_SETTINGS = {
     "filter": [
         # {'left': 'type', 'operation': 'equal', 'right': 'stock'},
         # {'left': 'subtype', 'operation': 'in_range', 'right': ['common', 'foreign-issuer']},
-        {"left": "exchange", "operation": "in_range", "right": ["AMEX", "NASDAQ", "NYSE", "ARCA"]}
+        {
+            "left": "exchange",
+            "operation": "in_range",
+            "right": ["AMEX", "NASDAQ", "NYSE", "ARCA"],
+        }
     ],
     "options": {"lang": "en"},
     "markets": ["america"],
@@ -583,7 +587,9 @@ class Scanner(dict, Enum):
         cols.insert(
             1, self.value["sortBy"]
         )  # insert the column that we are sorting by, right after the symbol column
-        kwargs.setdefault("columns", cols)  # use `setdefault()` so the user can override this
+        kwargs.setdefault(
+            "columns", cols
+        )  # use `setdefault()` so the user can override this
         return get_scanner_data(sort=self.value, **kwargs)[1]
 
 
@@ -594,7 +600,9 @@ def get_scanner_data(**kwargs) -> tuple[int, pd.DataFrame]:
     :param kwargs: kwargs to override fields in the `local_settings` dictionary
     :return: Pandas DataFrame
     """
-    local_settings = API_SETTINGS.copy()  # copy() to avoid modifying the global settings
+    local_settings = (
+        API_SETTINGS.copy()
+    )  # copy() to avoid modifying the global settings
     local_settings.update(**kwargs)
 
     r = requests.post(URL, headers=HEADERS, data=json.dumps(local_settings))
@@ -604,10 +612,14 @@ def get_scanner_data(**kwargs) -> tuple[int, pd.DataFrame]:
     data = json_obj["data"]
     if data is None:
         return rows_count, pd.DataFrame(columns=local_settings["columns"])
-    return rows_count, pd.DataFrame(data=(row["d"] for row in data), columns=local_settings["columns"])
+    return rows_count, pd.DataFrame(
+        data=(row["d"] for row in data), columns=local_settings["columns"]
+    )
 
 
-def get_all_symbols(exchanges: Iterable[str] = ("AMEX", "OTC", "NYSE", "NASDAQ")) -> list[str]:
+def get_all_symbols(
+    exchanges: Iterable[str] = ("AMEX", "OTC", "NYSE", "NASDAQ")
+) -> list[str]:
     """
     Get a list with all the symbols filtered by a given exchange.
 
@@ -618,7 +630,9 @@ def get_all_symbols(exchanges: Iterable[str] = ("AMEX", "OTC", "NYSE", "NASDAQ")
     """
     exchanges = {x.upper() for x in exchanges}
     r = requests.get(URL)
-    data = r.json()["data"]  # [{'s': 'NYSE:HKD', 'd': []}, {'s': 'NASDAQ:ALTY', 'd': []}...]
+    data = r.json()[
+        "data"
+    ]  # [{'s': 'NYSE:HKD', 'd': []}, {'s': 'NASDAQ:ALTY', 'd': []}...]
 
     res = []
     for dct in data:

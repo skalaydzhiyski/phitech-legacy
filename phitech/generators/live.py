@@ -24,7 +24,9 @@ def generate_live_provider(bot_def):
 
 
 def get_instrument_strings_for_kind(bot_def, kind):
-    kind_instruments_def = conf.instruments[bot_def.live.universe.instruments.name][kind]
+    kind_instruments_def = conf.instruments[bot_def.live.universe.instruments.name][
+        kind
+    ]
     instrument_strings = []
     for ticker in kind_instruments_def.tickers:
         istr = ""

@@ -25,4 +25,6 @@ for current in os.listdir(f"{const.BASE_DEFINITIONS_PATH}/instruments"):
     if not validate_def_filename(current):
         continue
     name = current.split(".")[0]
-    instruments[name] = parse_yaml(f"{const.BASE_DEFINITIONS_PATH}/instruments/{current}")
+    instruments[name] = parse_yaml(
+        f"{const.BASE_DEFINITIONS_PATH}/instruments/{current}"
+    )
