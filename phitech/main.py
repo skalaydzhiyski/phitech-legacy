@@ -403,15 +403,15 @@ def trades(account, path):
 
     trades = ib_helper.get_trades(client)
     if trades.shape[0] == 0:
-        logger.info("no trades found.")
-        os.system("espeak -v en-uk 'no trades found' -p 10")
+        logger.info("no trades found, skip update")
+        os.system("espeak -v en-uk 'no trades found, skip update' -p 10")
         return
 
     trades.drop(columns=["execId"])
     today = datetime.datetime.now().strftime("%Y-%m-%d")
     trades.to_csv(f"{path}/trades_{today}.csv", index=False)
 
-    os.system("espeak -v en-uk 'daily trades updated' -p 10")
+    os.system(f"espeak -v en-uk '{trades.shape[0]} trades found, update daily trades.' -p 10")
     logger.info("done.")
     client.disconnect()
 
