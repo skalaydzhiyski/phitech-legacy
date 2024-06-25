@@ -131,10 +131,22 @@ def bot(name, backtest=None, live=False):
 
 @make.command(help="Generate a SierraChart study")
 @click.option("--name", required=False, help="The name of the SierraChart study")
-@click.option("--replace", is_flag=True, help="Whether to replace the .cpp file for the study or not.")
-@click.option("--compile", is_flag=True, help="When the study is built, you can compile the study and it will end up in SierraChart")
+@click.option(
+    "--replace",
+    is_flag=True,
+    help="Whether to replace the .cpp file for the study or not.",
+)
+@click.option(
+    "--compile",
+    is_flag=True,
+    help="When the study is built, you can compile the study and it will end up in SierraChart",
+)
 def study(name=None, replace=False, compile=False):
-    from phitech.templates import sierra_study_build_script_template, sierra_study_compile_commands_template, sierra_study_base_script_template
+    from phitech.templates import (
+        sierra_study_build_script_template,
+        sierra_study_compile_commands_template,
+        sierra_study_base_script_template,
+    )
 
     if compile:
         logger.info("make study DLL")
@@ -152,11 +164,13 @@ def study(name=None, replace=False, compile=False):
         return
 
     logger.info(f"study_name -> {name}")
-    sierra_chart_base_dir = "/home/darchitect/wine-bottles/sierra-chart/drive_c/SierraChart"
+    sierra_chart_base_dir = (
+        "/home/darchitect/wine-bottles/sierra-chart/drive_c/SierraChart"
+    )
 
     logger.info("make base dir")
-    base_dir = f'.'
-    study_exists = os.path.exists(f'{base_dir}/{name}.cpp')
+    base_dir = f"."
+    study_exists = os.path.exists(f"{base_dir}/{name}.cpp")
     if not study_exists or (study_exists and replace):
         logger.info("replace specified -> delete old study")
         os.system(f"rm -rf {base_dir}/{name}.cpp")
@@ -167,7 +181,7 @@ def study(name=None, replace=False, compile=False):
             dll_name=dll_name,
             func_name=func_name,
         ).strip()
-        with open(f'{base_dir}/{name}.cpp', 'w') as f:
+        with open(f"{base_dir}/{name}.cpp", "w") as f:
             f.write(script_str)
 
     logger.info("make build script")
@@ -175,17 +189,17 @@ def study(name=None, replace=False, compile=False):
         study_name=name,
         sierra_chart_base_dir=sierra_chart_base_dir,
     ).strip()
-    build_script_path = f'{base_dir}/run_build_study_dll.sh'
-    with open(build_script_path, 'w') as f:
+    build_script_path = f"{base_dir}/run_build_study_dll.sh"
+    with open(build_script_path, "w") as f:
         f.write(build_script_str)
-    os.system(f'chmod +x {build_script_path}')
+    os.system(f"chmod +x {build_script_path}")
 
     logger.info("make compile commands script")
     compile_commands_str = sierra_study_compile_commands_template.format(
         study_name=name,
         sierra_chart_base_dir=sierra_chart_base_dir,
     ).strip()
-    with open(f'{base_dir}/compile_commands.json', 'w') as f:
+    with open(f"{base_dir}/compile_commands.json", "w") as f:
         f.write(compile_commands_str)
 
     logger.info("done.")
@@ -411,7 +425,9 @@ def trades(account, path):
     today = datetime.datetime.now().strftime("%Y-%m-%d")
     trades.to_csv(f"{path}/trades_{today}.csv", index=False)
 
-    os.system(f"espeak -v en-uk '{trades.shape[0]} trades found, update daily trades.' -p 10")
+    os.system(
+        f"espeak -v en-uk '{trades.shape[0]} trades found, update daily trades.' -p 10"
+    )
     logger.info("done.")
     client.disconnect()
 
