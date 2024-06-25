@@ -653,7 +653,7 @@ def depth_to_depth_file_for_sierra(depth, target_path):
         )
         recs.append(rec)
 
-    print("Writing bytes to", target_path)
+    print("write bytes to", target_path)
     depth_bytes = header + b"".join(Struct(rec_format).pack(*rec) for rec in recs)
     with open(target_path, "wb") as f:
         f.write(depth_bytes)
