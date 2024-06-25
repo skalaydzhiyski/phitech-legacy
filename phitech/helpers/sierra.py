@@ -408,7 +408,15 @@ def get_market_depth_df_from_depth_file(filepath):
     return res
 
 
-def bento_to_scid(bento, target_path):
+def bento_to_scid(bento_zst_path, target_path):
+    print("load file")
+    if os.path.exists(bento_zst_path):
+        data = db.DBNStore.from_file(bento_zst_path)
+    else:
+        raise ValueError(f"data file {bento_zst_path} not found.")
+    print("convert to df")
+    bento = data.to_df()
+    print("make scid")
     ticks_to_scid(primary_to_ticks(bento_to_primary(bento)), target_path)
 
 
