@@ -566,6 +566,9 @@ def bento_zst_to_depth(bento_zst_path, target_depth_file, n_states=None):
 
 
 def bento_to_primary(bento):
+    print("bento -> primary")
+    bento["ts_event"] = bento.ts_event.astype(str)
+    bento = bento.reset_index().drop(columns=["ts_recv"])
     cols_to_drop = [
         "ts_event",
         "rtype",
@@ -589,6 +592,7 @@ def bento_to_primary(bento):
 
 
 def primary_to_ticks(primary):
+    print("primary -> ticks")
     ticks = primary[primary.action == "F"].copy()
     ticks["open"] = 0.0
     ticks["high"] = ticks.price
