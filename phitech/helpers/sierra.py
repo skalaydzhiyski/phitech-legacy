@@ -484,6 +484,7 @@ def bento_zst_to_depth(bento_zst_path, target_path, n_states=None):
             if init:
                 init_state = book_state
                 init = False
+                book_states.append(init_state[init_state.side != "R"])
                 continue
 
             book_states.append(book_state)
@@ -514,7 +515,6 @@ def bento_zst_to_depth(bento_zst_path, target_path, n_states=None):
     for prev, current in ProgIter(
         zip(book_states[:max_states], book_states[1:max_states])
     ):
-        prev = prev[prev.side != "R"]
         current_depth = []
         current_timestamp = current.timestamp.unique()[0]
         prev_prices, current_prices = prev.price.unique(), current.price.unique()
