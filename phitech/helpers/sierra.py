@@ -420,7 +420,7 @@ def bento_to_scid(bento_zst_path, target_path):
     ticks_to_scid(primary_to_ticks(bento_to_primary(bento)), target_path)
 
 
-def bento_zst_to_depth(bento_zst_path, target_depth_file, n_states=None):
+def bento_zst_to_depth(bento_zst_path, target_path, n_states=None):
     if os.path.exists(bento_zst_path):
         data = db.DBNStore.from_file(bento_zst_path)
     else:
@@ -562,7 +562,7 @@ def bento_zst_to_depth(bento_zst_path, target_depth_file, n_states=None):
     )
     print(f"first timestamp -> {first_ts}")
     print(f"last timestamp -> {last_ts}")
-    depth_to_depth_file_for_sierra(bento_depth, target_depth_file)
+    depth_to_depth_file_for_sierra(bento_depth, target_path)
 
 
 def bento_to_primary(bento):
@@ -637,7 +637,7 @@ def ticks_to_scid(ticks, target_path):
     print("done.")
 
 
-def depth_to_depth_file_for_sierra(depth, target_depth_file):
+def depth_to_depth_file_for_sierra(depth, target_path):
     header = b"SCDD@\x00\x00\x00\x18\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
     rec_format = "qbbhfII"
     recs = []
@@ -653,9 +653,9 @@ def depth_to_depth_file_for_sierra(depth, target_depth_file):
         )
         recs.append(rec)
 
-    print("Writing bytes to", target_depth_file)
+    print("Writing bytes to", target_path)
     depth_bytes = header + b"".join(Struct(rec_format).pack(*rec) for rec in recs)
-    with open(target_depth_file, "wb") as f:
+    with open(target_path, "wb") as f:
         f.write(depth_bytes)
     print("done.")
 
