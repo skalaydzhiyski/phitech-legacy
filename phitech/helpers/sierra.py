@@ -421,6 +421,17 @@ def bento_to_scid(bento_zst_path, target_path):
 
 
 def bento_zst_to_depth(bento_zst_path, target_path, n_states=None):
+    def make_decision_command(r):
+        if pd.isna(r.side_p):
+            return "AC"
+        if pd.isna(r.side_c):
+            return "CP"
+        if r.side_p != r.side_c:
+            return "CPMC"
+        if r.quantity_p != r.quantity_c or r.orders_p != r.orders_c:
+            return "MC"
+        return "0"
+
     if os.path.exists(bento_zst_path):
         data = db.DBNStore.from_file(bento_zst_path)
     else:
@@ -441,7 +452,8 @@ def bento_zst_to_depth(bento_zst_path, target_path, n_states=None):
     print(f"publisher_id -> {publisher_id}")
 
     prev_timestamp = 0
-    book_states = []
+    bento_depth = []
+    prev = None
 
     market = Market()
     for mbo in ProgIter(data):
@@ -478,17 +490,87 @@ def bento_zst_to_depth(bento_zst_path, target_path, n_states=None):
             book_state = book_state[
                 ["timestamp", "orders", "quantity", "price", "side"]
             ]
-            # book_state['price'] = book_state.price.astype(float)
-            book_state["command"] = ""
 
             if init:
                 init_state = book_state
                 init = False
-                book_states.append(init_state[init_state.side != "R"])
+                prev = init_state[init_state.side != "R"]
+                init_depth = [
+                    (
+                        (r.timestamp, "R", 0, 0, 0.0, 0)
+                        if r.side == "R"
+                        else (
+                            r.timestamp,
+                            f"A{r.side}",
+                            0,
+                            r.orders,
+                            r.price,
+                            r.quantity,
+                        )
+                    )
+                    for r in init_state.itertuples()
+                ]
+                bento_depth += init_depth
                 continue
 
-            book_states.append(book_state)
-            # time.sleep(.01)
+            current = book_state
+
+            cols = ["orders", "quantity", "price", "side"]
+            temp = pd.merge(
+                prev[cols],
+                current[cols],
+                how="outer",
+                on="price",
+                suffixes=["_p", "_c"],
+            )
+            temp["decision"] = temp.apply(lambda r: make_decision_command(r), axis=1)
+
+            current_depth = []
+            current_timestamp = current.timestamp.unique()[0]
+            for r in temp[temp.decision != "0"].itertuples():
+                if r.decision == "CP":
+                    current_depth.append(
+                        (current_timestamp, f"C{r.side_p}", 1, 0, r.price, 0)
+                    )
+                elif r.decision == "AC":
+                    current_depth.append(
+                        (
+                            current_timestamp,
+                            f"A{r.side_c}",
+                            1,
+                            r.orders_c,
+                            r.price,
+                            r.quantity_c,
+                        )
+                    )
+                elif r.decision == "CPMC":
+                    current_depth.append(
+                        (current_timestamp, f"C{r.side_p}", 1, 0, r.price, 0)
+                    )
+                    current_depth.append(
+                        (
+                            current_timestamp,
+                            f"A{r.side_c}",
+                            1,
+                            r.orders_c,
+                            r.price,
+                            r.quantity_c,
+                        )
+                    )
+                elif r.decision == "MC":
+                    current_depth.append(
+                        (
+                            current_timestamp,
+                            f"M{r.side_c}",
+                            1,
+                            r.orders_c,
+                            r.price,
+                            r.quantity_c,
+                        )
+                    )
+
+            bento_depth += current_depth
+            prev = current
 
             if n_states is None:
                 continue
@@ -497,49 +579,6 @@ def bento_zst_to_depth(bento_zst_path, target_path, n_states=None):
             if counter >= n_states:
                 print("n_states reached, break")
                 break
-
-    print("make init depth")
-    init_depth = [
-        (
-            (r.timestamp, "R", 0, 0, 0.0, 0)
-            if r.side == "R"
-            else (r.timestamp, f"A{r.side}", 0, r.orders, r.price, r.quantity)
-        )
-        for r in init_state.itertuples()
-    ]
-
-    bento_depth = [] + init_depth
-    max_states = n_states
-
-    print("make depth (parse states)")
-    for prev, current in ProgIter(
-        zip(book_states[:max_states], book_states[1:max_states])
-    ):
-        current_depth = []
-        current_timestamp = current.timestamp.unique()[0]
-        prev_prices, current_prices = prev.price.unique(), current.price.unique()
-        for r in prev.itertuples():
-            if r.price not in current_prices:
-                current_depth.append(
-                    (current_timestamp, f"C{r.side}", 1, 0, r.price, 0)
-                )
-        for r in current.itertuples():
-            if r.price not in prev_prices:
-                current_depth.append(
-                    (current_timestamp, f"A{r.side}", 1, r.orders, r.price, r.quantity)
-                )
-            else:
-                prev_match = prev[prev.price == r.price].iloc[0]
-                if prev_match.quantity == r.quantity and prev_match.orders == r.orders:
-                    continue
-                if prev_match.side != r.side:
-                    current_depth.append(
-                        (current_timestamp, f"C{prev_match.side}", 1, 0, r.price, 0)
-                    )
-                current_depth.append(
-                    (current_timestamp, f"M{r.side}", 1, r.orders, r.price, r.quantity)
-                )
-        bento_depth += current_depth
 
     bento_depth = pd.DataFrame(bento_depth)
     bento_depth.columns = [
@@ -554,6 +593,8 @@ def bento_zst_to_depth(bento_zst_path, target_path, n_states=None):
         lambda c: bento_to_sierra_command_mapping[c]
     )
     bento_depth["timestamp"] = bento_depth.timestamp.astype(int)
+    bento_depth["orders"] = bento_depth.orders.astype(int)
+    bento_depth["quantity"] = bento_depth.quantity.astype(int)
     print(f"shape bento_depth -> {bento_depth.shape}")
     first_ts, last_ts = convert_sierra_timestamp_to_datetime(
         bento_depth.timestamp.unique()[1]
