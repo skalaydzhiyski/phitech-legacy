@@ -10,5 +10,5 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(databento)
 
-add_executable(example main.cpp)
-target_link_libraries(example PRIVATE databento::databento)
+add_executable(bento-to-depth main.cpp)
+target_link_libraries(bento-to-depth PRIVATE databento::databento)

@@ -1,4 +1,9 @@
+#include <netinet/in.h>
+#include <resolv.h>
+#include <unistd.h>
+
 #include <algorithm>
+#include <chrono>
 #include <cstdint>
 #include <databento/constants.hpp>  // dataset, kUndefPrice
 #include <databento/datetime.hpp>   // ToIso8601, UnixNanos
@@ -8,12 +13,15 @@
 #include <databento/flag_set.hpp>
 #include <databento/historical.hpp>  // HistoricalBuilder
 #include <databento/record.hpp>      // BidAskPair, MboMsg, Record
+#include <databento/timeseries.hpp>
 #include <fstream>
 #include <iostream>
 #include <iterator>
 #include <map>
+#include <nlohmann/detail/output/output_adapters.hpp>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -39,16 +47,13 @@ struct PriceLevel {
 };
 
 std::ostream& operator<<(std::ostream& stream, const PriceLevel& level) {
-    stream << level.size << " @ " << PxToString(level.price) << " | "
-           << level.count << " order(s)";
+    stream << level.size << " @ " << PxToString(level.price) << " | " << level.count << " order(s)";
     return stream;
 }
 
 class Book {
    public:
-    std::pair<PriceLevel, PriceLevel> Bbo() const {
-        return {GetBidLevel(), GetAskLevel()};
-    }
+    std::pair<PriceLevel, PriceLevel> Bbo() const { return {GetBidLevel(), GetAskLevel()}; }
 
     PriceLevel GetBidLevel(std::size_t idx = 0) const {
         if (bids_.size() > idx) {
@@ -117,18 +122,17 @@ class Book {
                 break;
             }
             case Action::Add: {
-                Add(mbo_msg.hd.ts_event, mbo_msg.side, mbo_msg.order_id,
-                    mbo_msg.price, mbo_msg.size, mbo_msg.flags);
+                Add(mbo_msg.hd.ts_event, mbo_msg.side, mbo_msg.order_id, mbo_msg.price,
+                    mbo_msg.size, mbo_msg.flags);
                 break;
             }
             case Action::Cancel: {
-                Cancel(mbo_msg.side, mbo_msg.order_id, mbo_msg.price,
-                       mbo_msg.size);
+                Cancel(mbo_msg.side, mbo_msg.order_id, mbo_msg.price, mbo_msg.size);
                 break;
             }
             case Action::Modify: {
-                Modify(mbo_msg.hd.ts_event, mbo_msg.side, mbo_msg.order_id,
-                       mbo_msg.price, mbo_msg.size, mbo_msg.flags);
+                Modify(mbo_msg.hd.ts_event, mbo_msg.side, mbo_msg.order_id, mbo_msg.price,
+                       mbo_msg.size, mbo_msg.flags);
                 break;
             }
             default: {
@@ -158,14 +162,12 @@ class Book {
         return res;
     }
 
-    static LevelOrders::iterator GetLevelOrder(LevelOrders& level,
-                                               uint64_t order_id) {
-        auto order_it = std::find_if(
-            level.begin(), level.end(),
-            [order_id](const Order& order) { return order.id == order_id; });
+    static LevelOrders::iterator GetLevelOrder(LevelOrders& level, uint64_t order_id) {
+        auto order_it = std::find_if(level.begin(), level.end(), [order_id](const Order& order) {
+            return order.id == order_id;
+        });
         if (order_it == level.end()) {
-            throw std::invalid_argument{"No order with ID " +
-                                        std::to_string(order_id)};
+            throw std::invalid_argument{"No order with ID " + std::to_string(order_id)};
         }
         return order_it;
     }
@@ -176,8 +178,8 @@ class Book {
         bids_.clear();
     }
 
-    void Add(UnixNanos ts_event, Side side, uint64_t order_id, int64_t price,
-             uint32_t size, FlagSet flags) {
+    void Add(UnixNanos ts_event, Side side, uint64_t order_id, int64_t price, uint32_t size,
+             FlagSet flags) {
         const Order order{order_id, ts_event, price, size, side, flags.IsTob()};
         if (order.is_tob) {
             SideLevels& levels = GetSideLevels(side);
@@ -187,8 +189,7 @@ class Book {
         } else {
             LevelOrders& level = GetOrInsertLevel(side, price);
             level.emplace_back(order);
-            auto res =
-                orders_by_id_.emplace(order_id, PriceAndSide{price, side});
+            auto res = orders_by_id_.emplace(order_id, PriceAndSide{price, side});
             if (!res.second) {
                 throw std::invalid_argument{"Received duplicated order ID " +
                                             std::to_string(order_id)};
@@ -200,9 +201,8 @@ class Book {
         LevelOrders& level = GetLevel(side, price);
         auto order_it = GetLevelOrder(level, order_id);
         if (order_it->size < size) {
-            throw std::logic_error{
-                "Tried to cancel more size than existed for order ID " +
-                std::to_string(order_id)};
+            throw std::logic_error{"Tried to cancel more size than existed for order ID " +
+                                   std::to_string(order_id)};
         }
         order_it->size -= size;
         if (order_it->size == 0) {
@@ -214,8 +214,8 @@ class Book {
         }
     }
 
-    void Modify(UnixNanos ts_event, Side side, uint64_t order_id, int64_t price,
-                uint32_t size, FlagSet flags) {
+    void Modify(UnixNanos ts_event, Side side, uint64_t order_id, int64_t price, uint32_t size,
+                FlagSet flags) {
         auto price_side_it = orders_by_id_.find(order_id);
         if (price_side_it == orders_by_id_.end()) {
             // If order not found, treat it as an add
@@ -223,8 +223,7 @@ class Book {
             return;
         }
         if (price_side_it->second.side != side) {
-            throw std::logic_error{"Order " + std::to_string(order_id) +
-                                   " changed side"};
+            throw std::logic_error{"Order " + std::to_string(order_id) + " changed side"};
         }
         auto prev_price = price_side_it->second.price;
         auto& prev_level = GetLevel(side, prev_price);
@@ -275,9 +274,8 @@ class Book {
         SideLevels& levels = GetSideLevels(side);
         auto level_it = levels.find(price);
         if (level_it == levels.end()) {
-            throw std::invalid_argument{
-                std::string{"Received event for unknown level "} +
-                ToString(side) + " " + PxToString(price)};
+            throw std::invalid_argument{std::string{"Received event for unknown level "} +
+                                        ToString(side) + " " + PxToString(price)};
         }
         return level_it->second;
     }
@@ -311,19 +309,16 @@ class Market {
     const Book& GetBook(uint32_t instrument_id, uint16_t publisher_id) {
         const auto& books = GetBooksByPub(instrument_id);
         auto book_it =
-            std::find_if(books.begin(), books.end(),
-                         [publisher_id](const PublisherBook& pub_book) {
-                             return pub_book.publisher_id == publisher_id;
-                         });
+            std::find_if(books.begin(), books.end(), [publisher_id](const PublisherBook& pub_book) {
+                return pub_book.publisher_id == publisher_id;
+            });
         if (book_it == books.end()) {
-            throw std::invalid_argument{"No book for publisher ID " +
-                                        std::to_string(publisher_id)};
+            throw std::invalid_argument{"No book for publisher ID " + std::to_string(publisher_id)};
         }
         return book_it->book;
     }
 
-    std::pair<PriceLevel, PriceLevel> Bbo(uint32_t instrument_id,
-                                          uint16_t publisher_id) {
+    std::pair<PriceLevel, PriceLevel> Bbo(uint32_t instrument_id, uint16_t publisher_id) {
         const auto& book = GetBook(instrument_id, publisher_id);
         return book.Bbo();
     }
@@ -357,14 +352,12 @@ class Market {
 
     void Apply(const MboMsg& mbo_msg) {
         auto& instrument_books = books_[mbo_msg.hd.instrument_id];
-        auto book_it = std::find_if(
-            instrument_books.begin(), instrument_books.end(),
-            [&mbo_msg](const PublisherBook& pub_book) {
-                return pub_book.publisher_id == mbo_msg.hd.publisher_id;
-            });
+        auto book_it = std::find_if(instrument_books.begin(), instrument_books.end(),
+                                    [&mbo_msg](const PublisherBook& pub_book) {
+                                        return pub_book.publisher_id == mbo_msg.hd.publisher_id;
+                                    });
         if (book_it == instrument_books.end()) {
-            instrument_books.emplace_back(
-                PublisherBook{mbo_msg.hd.publisher_id, {}});
+            instrument_books.emplace_back(PublisherBook{mbo_msg.hd.publisher_id, {}});
             book_it = std::prev(instrument_books.end());
         }
         book_it->book.Apply(mbo_msg);
@@ -374,100 +367,205 @@ class Market {
     std::unordered_map<uint32_t, std::vector<PublisherBook>> books_;
 };
 
-struct BookRow {
-    std::string timestamp;
+struct BookStateRow {
+    long long timestamp;
     int orders;
     int quantity;
     float price;
-    bool side;
+    char side;
 };
 
 struct BentoDepthRow {
-    std::string timestamp;
-    std::string command;
+    long long timestamp;
+    int command;
     int flag;
     int orders;
     float price;
     int quantity;
 };
 
-int main() {
-    // First, create a historical client
-    auto client =
-        HistoricalBuilder{}.SetKey("db-bK9h5rwG4qSWNs4T4M4NCftDHDsYf").Build();
+void print_bento_depth_row(const BentoDepthRow& row) {
+    std::cout << "timestamp: " << row.timestamp << ", command: " << row.command
+              << ", flag: " << row.flag << ", orders: " << row.orders << ", price: " << row.price
+              << ", quantity: " << row.quantity << std::endl;
+}
 
-    // Next, we'll set up the books and book handlers
+void print_book_state_row(const BookStateRow& row) {
+    std::cout << "timestamp: " << row.timestamp << ", orders: " << row.orders
+              << ", quantity: " << row.quantity << ", price: " << row.price
+              << ", side: " << row.side << std::endl;
+}
+
+void add_book_state_row(std::vector<BookStateRow>& book_state, long long timestamp, int orders,
+                        int quantity, float price, char side) {
+    BookStateRow row;
+    row.timestamp = timestamp;
+    row.orders = orders;
+    row.quantity = quantity;
+    row.price = price;
+    row.side = side;
+    book_state.push_back(row);
+}
+
+void add_bento_depth_row(std::vector<BentoDepthRow>& bento_depth, long long timestamp, int command,
+                         int flag, int orders, float price, int quantity) {
+    BentoDepthRow row;
+    row.timestamp = timestamp;
+    row.command = command;
+    row.flag = flag;
+    row.orders = orders;
+    row.price = price;
+    row.quantity = quantity;
+    bento_depth.push_back(row);
+}
+
+int main(int argc, const char** argv) {
+    if (argc != 5) {
+        std::cerr << "Usage: " << argv[0]
+                  << " <input_file_path> <output_file_path> <snapshot_size> <n_states>"
+                  << std::endl;
+        return 1;
+    }
+    std::string input_file_path = argv[1];
+    std::string output_file_path = argv[2];
+    const int snapshot_size = std::stoi(argv[3]);
+    const int n_states = std::stoi(argv[4]);
+
+    int sierra_min_ns = 1000;
+    float price_resolution = 1000000000.0f;
+
+    bool init = true;
+    long long counter = 0;
+    long long prev_timestamp = 0;
+
     Market market;
-    // We'll parse symbology from the DBN metadata
-    std::unordered_map<uint32_t, std::string> symbol_mappings;
-    auto metadata_callback = [&symbol_mappings](Metadata metadata) {
-        for (const auto& mapping : metadata.mappings) {
-            symbol_mappings[std::stoi(mapping.intervals.at(0).symbol)] =
-                mapping.raw_symbol;
-        }
-    };
+    std::vector<BookStateRow> prev;
+    std::vector<BentoDepthRow> bento_depth;
 
-    const int snapshot_size = 100;
-
-    long counter = 0;
-
-    auto record_callback = [&market, &symbol_mappings,
-                            &counter](const Record& record) {
+    auto record_callback = [&](const Record& record) {
         if (auto* mbo = record.GetIf<MboMsg>()) {
             market.Apply(*mbo);
 
-            if (mbo->flags.IsLast()) {
-                const auto& symbol = symbol_mappings[mbo->hd.instrument_id];
-                const auto& book =
-                    market.GetBook(mbo->hd.instrument_id, mbo->hd.publisher_id)
-                        .GetSnapshot(snapshot_size);
+            // if not last continue
+            if (not mbo->flags.IsLast()) return KeepGoing::Continue;
 
-                auto timestamp = ToString(mbo->hd.ts_event);
-                std::vector<BookRow> book_state;
-                for (const auto& ba_pair : book) {
-                    BookRow bid_row;
-                    bid_row.timestamp = timestamp;
-                    bid_row.orders = ba_pair.bid_ct;
-                    bid_row.quantity = ba_pair.bid_sz;
-                    bid_row.price = ba_pair.bid_px;
-                    bid_row.side = 0;
-                    book_state.push_back(bid_row);
+            // if diff less than 1 ms continue (sierra depth is in ms)
+            long long current_timestamp = mbo->hd.ts_event.time_since_epoch().count();
+            auto diff = current_timestamp - prev_timestamp;
+            prev_timestamp = current_timestamp;
+            if (diff < sierra_min_ns) return KeepGoing::Continue;
 
-                    BookRow ask_row;
-                    ask_row.timestamp = timestamp;
-                    ask_row.orders = ba_pair.ask_ct;
-                    ask_row.quantity = ba_pair.ask_sz;
-                    ask_row.price = ba_pair.ask_px;
-                    ask_row.side = 1;
-                    book_state.push_back(ask_row);
-                }
+            const auto& book = market.GetBook(mbo->hd.instrument_id, mbo->hd.publisher_id)
+                                   .GetSnapshot(snapshot_size);
 
-                // delete me
-                for (const auto& row : book_state) {
-                    for (const auto& row : book_state) {
-                        int inner = counter + 1;
-                    }
-                }
-                for (const auto& row : book_state) {
-                    for (const auto& row : book_state) {
-                        int inner = counter + 1;
-                    }
-                }
-                // delete me
+            std::vector<BookStateRow> book_state;
+            for (const auto& ba_pair : book) {
+                add_book_state_row(book_state, current_timestamp, ba_pair.bid_ct, ba_pair.bid_sz,
+                                   ba_pair.bid_px / price_resolution, 'B');
 
-                counter++;
-                if (counter % 1000 == 0)
-                    std::cout << "processed book states -> " << counter
-                              << std::endl;
+                add_book_state_row(book_state, current_timestamp, ba_pair.ask_ct, ba_pair.ask_sz,
+                                   ba_pair.ask_px / price_resolution, 'A');
             }
+
+            if (init) {
+                init = false;
+                add_bento_depth_row(bento_depth, current_timestamp, 1, 0, 0, 0.0, 0);
+                for (const auto& row : book_state) {
+                    int command = row.side == 'B' ? 2 : 3;
+                    add_bento_depth_row(bento_depth, row.timestamp, command, 0, row.orders,
+                                        row.price, row.quantity);
+                }
+                prev = book_state;
+                return KeepGoing::Continue;
+            }
+
+            // sets of prices for state diff algorithm
+            std::set<float> prev_prices;
+            for (const auto& row : prev) {
+                prev_prices.insert(row.price);
+            }
+            std::set<float> current_prices;
+            for (const auto& row : book_state) {
+                current_prices.insert(row.price);
+            }
+
+            // dicts of price by BookStaterow for prev and current
+            std::map<float, BookStateRow> prev_dict;
+            for (const auto& row : prev) {
+                prev_dict[row.price] = row;
+            }
+            std::map<float, BookStateRow> current_dict;
+            for (const auto& row : book_state) {
+                current_dict[row.price] = row;
+            }
+
+            // make deletes
+            for (const auto& price : prev_prices) {
+                auto& prev = prev_dict[price];
+                if (current_prices.find(price) == current_prices.end()) {
+                    int command = prev.side == 'B' ? 6 : 7;
+                    add_bento_depth_row(bento_depth, current_timestamp, command, 1, 0, price, 0);
+                }
+            }
+
+            // make all the rest
+            for (const auto& price : current_prices) {
+                auto& current = current_dict[price];
+                auto& prev = prev_dict[price];
+                // make add
+                if (prev_prices.find(price) == prev_prices.end()) {
+                    int command = current.side == 'B' ? 2 : 3;
+                    add_bento_depth_row(bento_depth, current_timestamp, command, 1, current.orders,
+                                        price, current.quantity);
+                    continue;
+                }
+                if (current.side != prev.side) {
+                    // make delete prev
+                    int command = prev.side == 'B' ? 6 : 7;
+                    add_bento_depth_row(bento_depth, current_timestamp, command, 1, 0, price, 0);
+                    // make add current
+                    command = current.side == 'B' ? 2 : 3;
+                    add_bento_depth_row(bento_depth, current_timestamp, command, 1, current.orders,
+                                        price, current.quantity);
+                    continue;
+                }
+                if (current.orders != prev.orders or current.quantity != prev.quantity) {
+                    // make modify
+                    int command = current.side == 'B' ? 4 : 5;
+                    add_bento_depth_row(bento_depth, current_timestamp, command, 1, current.orders,
+                                        price, current.quantity);
+                }
+            }
+
+            prev = book_state;
+
+            counter++;
+            if (counter % 10000 == 0)
+                std::cout << "processed book states -> " << counter << std::endl;
+
+            if (n_states != -1 and counter >= n_states) return KeepGoing::Stop;
         }
         return KeepGoing::Continue;
     };
 
-    auto file_path =
-        "/home/darchitect/work/phitech/bento-cpp/"
-        "mes-bento-small.mbo.dbn.zst";
-    auto file_store = DbnFileStore{file_path};
-    file_store.Replay(metadata_callback, record_callback);
+    auto file_store = DbnFileStore{input_file_path};
+    file_store.Replay(record_callback);
+
+    std::cout << "bento depth size: " << bento_depth.size() << std::endl;
+    std::vector<std::string> header = {"timestamp", "command", "flag",
+                                       "orders",    "price",   "quantity"};
+    std::ofstream out_file(output_file_path);
+    for (size_t i = 0; i < header.size() - 1; i++) {
+        out_file << header[i] << ",";
+    }
+    out_file << header[header.size() - 1] << std::endl;
+
+    out_file << std::endl;
+    for (const auto& depth : bento_depth) {
+        out_file << depth.timestamp << "," << depth.command << "," << depth.flag << ","
+                 << depth.orders << "," << depth.price << "," << depth.quantity << std::endl;
+    }
+    out_file.close();
+    std::cout << "done." << std::endl;
     return 0;
 }

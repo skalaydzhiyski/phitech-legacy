@@ -420,7 +420,28 @@ def bento_to_scid(bento_zst_path, target_path):
     ticks_to_scid(primary_to_ticks(bento_to_primary(bento)), target_path)
 
 
-def bento_zst_to_depth(bento_zst_path, target_path, n_states=None):
+def bento_to_depth(input_filepath, output_filepath, snapshot_size=100, n_states=-1):
+    print("start bento to depth")
+    if os.path.exists(input_filepath):
+        data = db.DBNStore.from_file(input_filepath)
+    else:
+        raise ValueError(f"data file {input_filepath} not found.")
+    os.system(f"bento-to-depth {input_filepath} temp.csv {snapshot_size} {n_states}")
+    bento_depth = pd.read_csv("temp.csv")
+    bento_depth["timestamp"] = bento_depth.timestamp.apply(
+        lambda ts: convert_to_sierra_timestamp(str(pd.to_datetime(ts, unit="ns")))
+    )
+    bento_depth["timestamp"] = bento_depth.timestamp.apply(
+        lambda ts: (ts // 1000) * 1000
+    )
+    bento_depth["timestamp"] = bento_depth.timestamp.astype(int)
+    bento_depth["orders"] = bento_depth["orders"].astype(int)
+    bento_depth["quantity"] = bento_depth["quantity"].astype(int)
+    bento_depth = bento_depth.sort_values(["timestamp", "price"])
+    depth_to_depth_file_for_sierra(bento_depth, output_filepath)
+
+
+def bento_to_depth_slow(bento_zst_path, target_path, n_states=None):
     def make_decision_command(r):
         if pd.isna(r.side_p):
             return "AC"
@@ -595,6 +616,7 @@ def bento_zst_to_depth(bento_zst_path, target_path, n_states=None):
     bento_depth["timestamp"] = bento_depth.timestamp.astype(int)
     bento_depth["orders"] = bento_depth.orders.astype(int)
     bento_depth["quantity"] = bento_depth.quantity.astype(int)
+    bento_depth.to_csv("temp_slow.csv", index=False)
     print(f"shape bento_depth -> {bento_depth.shape}")
     first_ts, last_ts = convert_sierra_timestamp_to_datetime(
         bento_depth.timestamp.unique()[1]
