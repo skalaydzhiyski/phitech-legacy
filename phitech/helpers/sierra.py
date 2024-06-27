@@ -723,6 +723,13 @@ def depth_to_depth_file_for_sierra(depth, target_path):
     print("done.")
 
 
+def bento_to_sierra(input_filepath, output_scid_file, output_depth_file):
+    print("running -> bento to .scid (TODO: implement appending logic to the same scid file))")
+    bento_to_scid(input_filepath, output_scid_file)
+    print("running -> bento to .depth")
+    bento_to_depth(input_filepath, output_depth_file)
+
+
 if __name__ == "__main__":
     bento = pd.read_csv("../data/bento_full.csv")
     primary = bento_to_primary(bento)

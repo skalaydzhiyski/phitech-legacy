@@ -540,8 +540,9 @@ int main(int argc, const char** argv) {
             prev = book_state;
 
             counter++;
-            if (counter % 10000 == 0)
-                std::cout << "processed book states -> " << counter << std::endl;
+            if (counter % 100 == 0)
+                std::cout << "[ " << ToIso8601(mbo->hd.ts_event) << " ] processed book states -> "
+                          << counter << std::endl;
 
             if (n_states != -1 and counter >= n_states) return KeepGoing::Stop;
         }
